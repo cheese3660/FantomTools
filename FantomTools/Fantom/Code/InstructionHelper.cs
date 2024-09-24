@@ -123,12 +123,21 @@ public static class InstructionHelper
     /// <summary>
     /// Generates a "ld.var" instruction
     /// </summary>
-    /// <param name="variable">The variable to push</param>
+    /// <param name="variable">The variable to push, if it is null, it loads the `this` variable</param>
     /// <returns>The generated instruction</returns>
-    public static Instruction LoadVar(MethodVariable variable) => new RegisterInstruction
+    public static Instruction LoadVar(MethodVariable? variable) => new RegisterInstruction
     {
         OpCode = OperationType.LoadVar,
         Value = variable
+    };
+    
+    /// <summary>
+    /// Generates a "ld.var this" instruction
+    /// </summary>
+    public static Instruction LoadThis => new RegisterInstruction
+    {
+        OpCode = OperationType.LoadVar,
+        Value = null
     };
 
     /// <summary>
@@ -222,12 +231,22 @@ public static class InstructionHelper
         Value = method
     };
     
+    /// <summary>
+    /// Generates a "call.ctor" instruction
+    /// </summary>
+    /// <param name="method">The constructor to call</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction CallCtor(MethodReference method) => new MethodInstruction
     {
         OpCode = OperationType.CallCtor,
         Value = method
     };
     
+    /// <summary>
+    /// Generates a "call.static" instruction
+    /// </summary>
+    /// <param name="method">The constructor to call</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction CallStatic(MethodReference method) => new MethodInstruction
     {
         OpCode = OperationType.CallStatic,

@@ -15,7 +15,7 @@ public readonly record struct FieldReference(TypeReference Parent, string Name, 
     /// Creates a textual representation of the field reference
     /// </summary>
     /// <returns>The textual representation</returns>
-    public override string ToString() => $"({Type}){Parent}::{Name}";
+    public override string ToString() => $"({Type}){Parent}.{Name}";
 
     /// <summary>
     /// Creates a field reference from a <see cref="Field"/> instance

@@ -30,8 +30,14 @@ switch (args[0])
         {
             sb.AppendLine(type.Dump(true));
         }
-
         File.WriteAllText(args[2], sb.ToString());
+        break;
+    }
+    case "roundtrip":
+    {
+        var pod = Pod.FromFile(args[1]);
+        using var outPod = ZipFile.Open(args[2], ZipArchiveMode.Create);
+        pod.Save(outPod);
         break;
     }
 }
