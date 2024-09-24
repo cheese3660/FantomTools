@@ -2,7 +2,7 @@
 
 namespace FantomTools.PodWriting;
 
-public class StringTable : FantomTable<string>
+internal class StringTable : FantomTable<string>
 {
     protected override void WriteSingle(FantomStreamWriter writer, string value)
     {

@@ -2,7 +2,7 @@
 
 namespace FantomTools.PodWriting;
 
-public class FloatTable : FantomTable<double>
+internal class FloatTable : FantomTable<double>
 {
     protected override void WriteSingle(FantomStreamWriter writer, double value)
     {

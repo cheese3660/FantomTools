@@ -6,6 +6,15 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <WarningLevel>8</WarningLevel>
+      <DocumentationFile>C:\Users\arall\FantomEditor\build\bin\FantomTools\Debug\FantomTools.xml</DocumentationFile>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <DocumentationFile>C:\Users\arall\FantomEditor\build\bin\FantomTools\Release\FantomTools.xml</DocumentationFile>
+    </PropertyGroup>
+
     <ItemGroup>
       <PackageReference Include="JetBrains.Annotations" Version="2024.2.0" />
       <PackageReference Include="Myitian.Text.ModifiedUTF8Encoding" Version="1.2.1" />

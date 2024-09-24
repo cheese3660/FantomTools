@@ -31,8 +31,7 @@ internal class TypeReader(PodReader podReader, TypeReferenceReader self, TypeRef
     }
 
 
-    public string Filename => $"fcode/{self.TypeName}.fcode";
-    public string AssemblyPath => $"fasm/{self.TypeName}.fasm";
+    private string Filename => $"fcode/{self.TypeName}.fcode";
 
     public void Read()
     {

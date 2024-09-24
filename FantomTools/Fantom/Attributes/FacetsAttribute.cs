@@ -25,7 +25,7 @@ public class FacetsAttribute : FantomAttribute
         Facets = facets.ToList();
     }
 
-    public override void WriteBody(FantomStreamWriter writer, FantomTables tables)
+    internal override void WriteBody(FantomStreamWriter writer, FantomTables tables)
     {
         using var dataStream = new MemoryStream();
         var dataWriter = new FantomStreamWriter(dataStream);

@@ -3,118 +3,219 @@ using FantomTools.Fantom.Code.Operations;
 
 namespace FantomTools.Fantom.Code;
 
+/// <summary>
+/// Contains a bunch of helper methods and getters to generate instructions
+/// </summary>
 public static class InstructionHelper
 {
+    /// <summary>
+    /// Generates a "nop" instruction
+    /// </summary>
     public static Instruction Nop => new()
     {
         OpCode = OperationType.Nop
     };
 
+    /// <summary>
+    /// Generates a "ld.null" instruction
+    /// </summary>
     public static Instruction LoadNull => new()
     {
         OpCode = OperationType.LoadNull
     };
 
+    /// <summary>
+    /// Generates a "ld.false" instruction
+    /// </summary>
     public static Instruction LoadFalse => new()
     {
         OpCode = OperationType.LoadFalse
     };
     
+    /// <summary>
+    /// Generates a "ld.true" instruction
+    /// </summary>
     public static Instruction LoadTrue => new()
     {
         OpCode = OperationType.LoadTrue
     };
 
+    /// <summary>
+    /// Generates a "ld.int" instruction
+    /// </summary>
+    /// <param name="value">The integer to push</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadInt(long value) => new IntegerInstruction
     {
         OpCode = OperationType.LoadInt,
         Value = value
     };
-
+    
+    /// <summary>
+    /// Generates a "ld.float" instruction
+    /// </summary>
+    /// <param name="value">The float to push</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadFloat(double value) => new FloatInstruction
     {
         OpCode = OperationType.LoadFloat,
         Value = value
     };
 
-    public static Instruction LoadDecimal(string dec) => new StringInstruction
+    /// <summary>
+    /// Generates a "ld.decimal" instruction
+    /// </summary>
+    /// <param name="value">The decimal to push</param>
+    /// <returns>The generated instruction</returns>
+    public static Instruction LoadDecimal(string value) => new StringInstruction
     {
         OpCode = OperationType.LoadDecimal,
-        Value = dec
+        Value = value
     };
 
-    public static Instruction LoadStr(string str) => new StringInstruction
+
+    /// <summary>
+    /// Generates a "ld.str" instruction
+    /// </summary>
+    /// <param name="value">The string to push</param>
+    /// <returns>The generated instruction</returns>
+    public static Instruction LoadStr(string value) => new StringInstruction
     {
         OpCode = OperationType.LoadStr,
-        Value = str
+        Value = value
     };
 
+
+    /// <summary>
+    /// Generates a "ld.duration" instruction
+    /// </summary>
+    /// <param name="ticks">The duration to push in ticks</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadDuration(long ticks) => new IntegerInstruction
     {
         OpCode = OperationType.LoadDuration,
         Value = ticks
     };
 
+    /// <summary>
+    /// Generates a "ld.type" instruction
+    /// </summary>
+    /// <param name="type">The type to push</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadType(TypeReference type) => new TypeInstruction
     {
         OpCode = OperationType.LoadType,
         Value = type,
     };
 
-    public static Instruction LoadUri(string uri) => new StringInstruction
+
+    /// <summary>
+    /// Generates a "ld.uri" instruction
+    /// </summary>
+    /// <param name="value">The uri to push</param>
+    /// <returns>The generated instruction</returns>
+    public static Instruction LoadUri(string value) => new StringInstruction
     {
         OpCode = OperationType.LoadUri,
-        Value = uri
+        Value = value
     };
 
+    /// <summary>
+    /// Generates a "ld.var" instruction
+    /// </summary>
+    /// <param name="variable">The variable to push</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadVar(MethodVariable variable) => new RegisterInstruction
     {
         OpCode = OperationType.LoadVar,
         Value = variable
     };
 
+    /// <summary>
+    /// Generates a "st.var" instruction
+    /// </summary>
+    /// <param name="variable">The variable to store into</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction StoreVar(MethodVariable variable) => new RegisterInstruction
     {
         OpCode = OperationType.StoreVar,
         Value = variable
     };
 
+    /// <summary>
+    /// Generates a "ld.instance" instruction
+    /// </summary>
+    /// <param name="field">The field to read from and push</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadInstance(FieldReference field) => new FieldInstruction
     {
         OpCode = OperationType.LoadInstance,
         Value = field
     };
     
+    /// <summary>
+    /// Generates a "st.instance" instruction
+    /// </summary>
+    /// <param name="field">The field to store into</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction StoreInstance(FieldReference field) => new FieldInstruction
     {
         OpCode = OperationType.StoreInstance,
         Value = field
     };
     
+    /// <summary>
+    /// Generates a "ld.static" instruction
+    /// </summary>
+    /// <param name="field">The field to read from and push</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadStatic(FieldReference field) => new FieldInstruction
     {
         OpCode = OperationType.LoadStatic,
         Value = field
     };
     
+    
+    /// <summary>
+    /// Generates a "st.static" instruction
+    /// </summary>
+    /// <param name="field">The field to store into</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction StoreStatic(FieldReference field) => new FieldInstruction
     {
         OpCode = OperationType.StoreStatic,
         Value = field
     };
     
+    
+    /// <summary>
+    /// Generates a "ld.mixin" instruction
+    /// </summary>
+    /// <param name="field">The field to read from and push</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction LoadMixinStatic(FieldReference field) => new FieldInstruction
     {
         OpCode = OperationType.LoadMixinStatic,
         Value = field
     };
     
+    /// <summary>
+    /// Generates a "st.mixin" instruction
+    /// </summary>
+    /// <param name="field">The field to store into</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction StoreMixinStatic(FieldReference field) => new FieldInstruction
     {
         OpCode = OperationType.StoreMixinStatic,
         Value = field
     };
 
+    
+    /// <summary>
+    /// Generates a "new" instruction
+    /// </summary>
+    /// <param name="method">The constructor to call</param>
+    /// <returns>The generated instruction</returns>
     public static Instruction CallNew(MethodReference method) => new MethodInstruction
     {
         OpCode = OperationType.CallNew,

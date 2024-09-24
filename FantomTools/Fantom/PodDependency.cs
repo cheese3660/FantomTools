@@ -2,14 +2,28 @@
 
 namespace FantomTools.Fantom;
 
-public record struct PodDependency(string Name, params DependencyConstraint[] Constraints)
+/// <summary>
+/// Represents a dependency for a pod
+/// </summary>
+/// <param name="Name">The name of the pod this pod depends on</param>
+/// <param name="Constraints">The constraints of the dependency</param>
+public readonly record struct PodDependency(string Name, params DependencyConstraint[] Constraints)
 {
+    /// <summary>
+    /// Creates a dependency from a dependency string
+    /// </summary>
+    /// <param name="dependency">The dependency string</param>
+    /// <returns>The dependency</returns>
     public static PodDependency Parse(string dependency)
     {
         var parser = new DependencyParser(dependency.Trim());
         return parser.Parse();
     }
 
+    /// <summary>
+    /// Converts a dependency to a dependency string
+    /// </summary>
+    /// <returns>The dependency string</returns>
     public override string ToString()
     {
         return $"{Name} {string.Join(", ", Constraints.Select(x => x.ToString()))}";

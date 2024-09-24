@@ -9,7 +9,7 @@ public class LineNumberAttribute(ushort lineNumber) : FantomAttribute("LineNumbe
 {
     public ushort LineNumber = lineNumber;
 
-    public override void WriteBody(FantomStreamWriter writer, FantomTables tables)
+    internal override void WriteBody(FantomStreamWriter writer, FantomTables tables)
     {
         writer.WriteU16(2);
         writer.WriteU16(LineNumber);

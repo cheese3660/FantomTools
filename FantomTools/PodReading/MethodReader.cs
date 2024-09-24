@@ -49,6 +49,7 @@ internal class MethodReader : SlotReader
 
         method.Flags = Flags;
         method.MaxStack = _maxStack;
+        method.CovariantReturnType = ReturnType.Reference;
         if (_code == null) return;
         using var reader = new FantomStreamReader(_podReader, new MemoryStream(_code.Buffer));
         method.LoadBody(reader);

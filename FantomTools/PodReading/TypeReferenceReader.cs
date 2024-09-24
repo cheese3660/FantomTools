@@ -7,8 +7,7 @@ internal sealed class TypeReferenceReader(string podName, string typeName, strin
 {
     internal string TypeName => typeName;
     public override string ToString() => signature.Length <= 1 ? $"{podName}::{typeName}{signature}" : signature;
-
-    public string Test() => $"{podName}, {typeName}, {signature}";
+    
     public static TypeReferenceReader Read(FantomStreamReader streamReader)
     {
         var podName = streamReader.ReadName();
@@ -17,5 +16,5 @@ internal sealed class TypeReferenceReader(string podName, string typeName, strin
         return new TypeReferenceReader(podName, typeName, signature);
     }
 
-    public TypeReference Reference => TypeReference.Reference(ToString());
+    public TypeReference Reference => TypeReference.Parse(ToString());
 }

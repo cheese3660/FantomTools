@@ -5,16 +5,35 @@ using JetBrains.Annotations;
 
 namespace FantomTools.Fantom;
 
+/// <summary>
+/// Represents a local/parameter in a method
+/// </summary>
 [PublicAPI]
 public class MethodVariable
 {
-    public ushort Index;
+    internal ushort Index;
+    /// <summary>
+    /// The name of this variable
+    /// </summary>
     public string Name = "";
+    /// <summary>
+    /// The type of this variable
+    /// </summary>
     public TypeReference Type = TypeReference.Object;
-    public bool IsParameter;
+    /// <summary>
+    /// Is this variable a parameter?
+    /// </summary>
+    public readonly bool IsParameter;
+    /// <summary>
+    /// The attributes on this variable
+    /// </summary>
     public List<FantomAttribute> Attributes = [];
-
-    public void Emit(FantomStreamWriter writer, FantomTables tables)
+    internal MethodVariable(bool isParameter)
+    {
+        IsParameter = isParameter;
+    }
+    
+    internal void Emit(FantomStreamWriter writer, FantomTables tables)
     {
         writer.WriteU16(tables.Names.Intern(Name));
         writer.WriteU16(tables.TypeReferences.Intern(Type));

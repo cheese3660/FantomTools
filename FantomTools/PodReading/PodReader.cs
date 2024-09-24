@@ -48,13 +48,6 @@ internal sealed class PodReader : IDisposable
         {
             type.Read();
         }
-        
-
-        Console.WriteLine("TypeRefs: ");
-        foreach (var type in TypeRefs)
-        {
-            Console.WriteLine(type.Test());
-        }
     }
 
     private List<T> ReadTable<T>(string path, Func<FantomStreamReader, T> readFunc)

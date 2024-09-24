@@ -6,43 +6,93 @@ using JetBrains.Annotations;
 
 namespace FantomTools.Fantom;
 
+
+/// <summary>
+/// This is an in memory representation of a Fantom Pod
+/// </summary>
 [PublicAPI]
 public sealed class Pod : IDisposable
 {
     private readonly MemoryStream _backingStream;
     private readonly ZipArchive _nonPodFiles;
+    
+    /// <summary>
+    /// The pod's metadata
+    /// </summary>
     public PodMeta MetaData = new();
+    
+    /// <summary>
+    /// All the types contained in the pod
+    /// </summary>
     public List<Type> Types = [];
     
+    /// <summary>
+    /// The paths of all the data files (i.e. non-code/meta.props files) that this pod currently has
+    /// </summary>
+    public IEnumerable<string> DataFiles => _nonPodFiles.Entries.Select(x => x.FullName);
+    
+    
+    /// <summary>
+    /// Create an empty Pod
+    /// Make sure to set up the metadata before writing this out!
+    /// </summary>
     public Pod()
     {
         _backingStream = new MemoryStream();
         _nonPodFiles = new ZipArchive(_backingStream, ZipArchiveMode.Update, true);
     }
 
-    public void AddType(Type t)
+    /// <summary>
+    /// Add a type to this pod
+    /// </summary>
+    /// <param name="typeToAdd">The type to add to this pod</param>
+    /// <exception cref="ArgumentException">Thrown if the types pod is not the current Pod instance</exception>
+    public void AddType(Type typeToAdd)
     {
-        if (t.TypePod != this) throw new Exception("Type does not come from this pod!");
-        Types.Add(t);
+        if (typeToAdd.TypePod != this) throw new ArgumentException("Type does not come from this pod!");
+        Types.Add(typeToAdd);
     }
-
-    public Type CreateType(string name)
+    
+    /// <summary>
+    /// Creates a type, and adds it to this pod
+    /// </summary>
+    /// <param name="name">The name of the new type</param>
+    /// <param name="baseType">The type this type inherits from</param>
+    /// <param name="flags">The flags that this type has, including visibility, abstractness, etc...</param>
+    /// <param name="mixins">The mixins this type has</param>
+    /// <returns>The newly created type</returns>
+    public Type CreateType(string name, TypeReference? baseType = null, Flags flags = Flags.Public, params TypeReference[] mixins)
     {
-        var result = new Type(this, name);
+        var result = new Type(this, name, baseType ?? TypeReference.Object, flags, mixins);
         Types.Add(result);
         return result;
     }
 
-    public Type GetType(string name)
+    /// <summary>
+    /// Gets a type in the pod by name
+    /// </summary>
+    /// <param name="name">The name of the type</param>
+    /// <returns>The type if it is found, otherwise null</returns>
+    public Type? GetType(string name)
     {
-        return Types.First(x => x.Name == name);
+        return Types.FirstOrDefault(x => x.Name == name);
     }
 
-    public Type CreateType(string name, TypeReference baseType, Flags flags = 0, params TypeReference[] mixins)
+    /// <summary>
+    /// Attempts to get a type in the pod by name
+    /// </summary>
+    /// <param name="name">The name of the type</param>
+    /// <param name="type">Set to the type if it is found, otherwise null</param>
+    /// <returns>True if the type is found</returns>
+    public bool TryGetType(string name, out Type? type)
     {
-        var result = new Type(this, name, baseType, flags, mixins);
-        Types.Add(result);
-        return result;
+        if (GetType(name) is { } t)
+        {
+            type = t;
+            return true;
+        }
+        type = null;
+        return false;
     }
     
     internal Pod(ZipPod backingPod) : this()
@@ -55,17 +105,29 @@ public sealed class Pod : IDisposable
         }
     }
 
+    /// <summary>
+    /// Reads a Pod from a file
+    /// </summary>
+    /// <param name="podFile">The pod file</param>
+    /// <returns>A memory representation of the pod read from the file</returns>
     public static Pod FromFile(string podFile)
     {
         using var readPod = new PodReader(new FileInfo(podFile));
         return readPod.ToMemoryPod();
     }
 
-    public void LoadMeta(Stream stream)
+    internal void LoadMeta(Stream stream)
     {
         MetaData.Read(stream);
     }
 
+    /// <summary>
+    /// Opens a data file for reading or writing
+    /// </summary>
+    /// <param name="path">The path to the data file in the pod</param>
+    /// <param name="createIfNotFound">Should the file be created if it does not exist</param>
+    /// <returns>The stream of the data file that was opened</returns>
+    /// <exception cref="Exception">Thrown if createIfNotFound is false and the path does not exist</exception>
     public Stream OpenDataFile(string path, bool createIfNotFound = false)
     {
         if (_nonPodFiles.GetEntry(path) is { } entry)
@@ -78,8 +140,46 @@ public sealed class Pod : IDisposable
         }
         throw new Exception($"Path not found in data: {path}");
     }
+
+    /// <summary>
+    /// Attempts to open a data file for reading/writing
+    /// </summary>
+    /// <param name="path">The path to the data file in the pod</param>
+    /// <param name="result">Set to the stream of the data file if it exists, otherwise null</param>
+    /// <returns>True if the stream was opened</returns>
+    public bool TryOpenDataFile(string path, out Stream? result)
+    {
+        if (_nonPodFiles.GetEntry(path) is { } entry)
+        {
+            result = entry.Open();
+            return true;
+        }
+        result = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a path exists in the pod's data files
+    /// </summary>
+    /// <param name="path">The path to check</param>
+    /// <returns>True if the path exists</returns>
+    public bool HasDataFile(string path) => _nonPodFiles.GetEntry(path) is not null;
+
+    /// <summary>
+    /// Trys to delete a data file from the pod
+    /// </summary>
+    /// <param name="path">The path in the pod to delete</param>
+    public void RemoveDataFile(string path)
+    {
+        if (_nonPodFiles.GetEntry(path) is not { } entry) return;
+        entry.Delete();
+    }
     
-    public void WritePod(ZipArchive outArchive)
+    /// <summary>
+    /// Saves a pod to a zip archive
+    /// </summary>
+    /// <param name="outArchive">The archive to save the pod to</param>
+    public void Save(ZipArchive outArchive)
     {
         // First let's copy the non pod data over
         foreach (var file in _nonPodFiles.Entries)
@@ -107,7 +207,15 @@ public sealed class Pod : IDisposable
         tables.WriteTableDefinitions(outArchive);
     }
 
-
+    /// <summary>
+    /// Writes a pod to a stream
+    /// </summary>
+    /// <param name="stream">The stream to write the pod to</param>
+    public void Save(Stream stream) => Save(new ZipArchive(stream, ZipArchiveMode.Create, true));
+    
+    /// <summary>
+    /// Disposes of the resources the pod holds
+    /// </summary>
     public void Dispose()
     {
         _nonPodFiles.Dispose();

@@ -12,7 +12,6 @@ internal class FantomBuffer(byte[] buffer, ushort len)
     public static FantomBuffer? Read(FantomStreamReader reader)
     {
         var length = reader.ReadU16();
-        Console.WriteLine($"Buffer length: {length}");
         if (length == 0) return null;
         var buffer = new byte[length];
         reader.Stream.ReadExactly(buffer);

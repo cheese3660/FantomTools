@@ -5,7 +5,7 @@ using JetBrains.Annotations;
 namespace FantomTools.PodWriting;
 
 [PublicAPI]
-public class FantomTables
+internal class FantomTables
 {
     public StringTable Names = new();
     public TypeReferenceTable TypeReferences;

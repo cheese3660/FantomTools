@@ -34,12 +34,12 @@ public class FantomAttribute(string name)
     }
 
 
-    public void Write(FantomStreamWriter writer, FantomTables tables)
+    internal void Write(FantomStreamWriter writer, FantomTables tables)
     {
         writer.WriteU16(tables.Names.Intern(Name));
         WriteBody(writer, tables);
     }
-    public virtual void WriteBody(FantomStreamWriter writer, FantomTables tables)
+    internal virtual void WriteBody(FantomStreamWriter writer, FantomTables tables)
     {
         if (Buffer != null)
         {

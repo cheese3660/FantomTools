@@ -2,7 +2,7 @@
 
 namespace FantomTools.PodWriting;
 
-public abstract class FantomTable<T> where T : IEquatable<T>
+internal abstract class FantomTable<T> where T : IEquatable<T>
 {
     private readonly List<T> _data = [];
     private readonly Dictionary<T, ushort> _indices = [];

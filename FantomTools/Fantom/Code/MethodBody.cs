@@ -4,11 +4,24 @@ using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
 using FantomTools.PodWriting;
 using FantomTools.Utilities;
+using JetBrains.Annotations;
 
 namespace FantomTools.Fantom.Code;
 
+/// <summary>
+/// Represents the code of a method
+/// </summary>
+/// <param name="method">The method</param>
+[PublicAPI]
 public class MethodBody(Method method)
 {
+    /// <summary>
+    /// The method that this is a body of
+    /// </summary>
+    public Method Method => method;
+    /// <summary>
+    /// The instructions contained within this body
+    /// </summary>
     public List<Instruction> Instructions = [];
 
     internal void Read(FantomStreamReader reader)
@@ -161,6 +174,10 @@ public class MethodBody(Method method)
         }
     }
     
+    /// <summary>
+    /// Get a textual disassembly of the method body
+    /// </summary>
+    /// <returns>The textual disassembly</returns>
     public string Dump()
     {
         ReconstructOffsets();
@@ -230,7 +247,7 @@ public class MethodBody(Method method)
         return sb.ToString();
     }
 
-    public void Emit(FantomStreamWriter writer, FantomTables tables)
+    internal void Emit(FantomStreamWriter writer, FantomTables tables)
     {
         ReconstructOffsets();
         using var bodyStream = new MemoryStream();
@@ -285,7 +302,6 @@ public class MethodBody(Method method)
         }
 
         var bytes = bodyStream.ToArray();
-        Console.WriteLine($"Writing body of method {method.Reference}, length: {bytes.Length}");
         writer.WriteU16((ushort)bytes.Length);
         writer.Stream.Write(bytes);
     }
@@ -375,5 +391,8 @@ public class MethodBody(Method method)
         return result;
     }
 
-    public MethodCursor Cursor => new MethodCursor(this);
+    /// <summary>
+    /// Get a cursor for easier method modification
+    /// </summary>
+    public MethodCursor Cursor => new(this);
 }

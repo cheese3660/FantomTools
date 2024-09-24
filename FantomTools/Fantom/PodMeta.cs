@@ -3,51 +3,94 @@ using JetBrains.Annotations;
 
 namespace FantomTools.Fantom;
 
+/// <summary>
+/// Represents the metadata about a pod
+/// </summary>
 [PublicAPI]
 public class PodMeta
 {
-    // pod.name
+    /// <summary>
+    /// The name of the pod
+    /// </summary>
     public string PodName = "";
-    // pod.version
+    /// <summary>
+    /// The version of the pod
+    /// </summary>
     public Version PodVersion = new("0.0.0.0");
-    // pod.depends
+    /// <summary>
+    /// The dependencies of the pod
+    /// </summary>
     public List<PodDependency> Dependencies = [];
-    // pod.summary
+    /// <summary>
+    /// A description of the pod
+    /// </summary>
     public string Summary = "";
-    // pod.isScript
+    /// <summary>
+    /// Is the pod a script
+    /// </summary>
     public bool IsScript;
-    // fcode.version
+    /// <summary>
+    /// The version of the FCode contained within the pod
+    /// </summary>
     public Version FCodeVersion = new("1.0.5.1");
-    // build.host
+    /// <summary>
+    /// The host that built the pod
+    /// </summary>
     public string BuildHost = "";
-    // build.user
+    /// <summary>
+    /// The user that built the pod
+    /// </summary>
     public string BuildUser = "";
-    // build.ts
+    /// <summary>
+    /// A timestamp of when the pod was built
+    /// </summary>
     public string BuildTimeStamp = "";
-    // build.tsKey
+    /// <summary>
+    /// Unknown?
+    /// </summary>
     public string BuildTimeStampKey = "";
-    // build.compiler
+    /// <summary>
+    /// The version of the compiler that built the pod
+    /// </summary>
     public Version CompilerVersion = new("1.0.80");
-    // build.platform
+    /// <summary>
+    /// The platform the pod was built on
+    /// </summary>
     public string Platform = "";
-    // pod.docApi
+    /// <summary>
+    /// Does the pod have API documentation?
+    /// </summary>
     public bool DocumentsApi;
-    // pod.docSrc
+    /// <summary>
+    /// Does the pod have source code documentation?
+    /// </summary>
     public bool DocumentsSource;
-    // pod.native.java
+    /// <summary>
+    /// Does the pod have java code?
+    /// </summary>
     public bool NativeJava;
-    // pod.native.jni
+    /// <summary>
+    /// Does the pod have jni code?
+    /// </summary>
     public bool NativeJni;
-    // pod.native.dotnet
+    /// <summary>
+    /// Does the pod have dotnet code?
+    /// </summary>
     public bool NativeDotnet;
-    // pod.native.js
+    /// <summary>
+    /// Does the pod have native js code?
+    /// </summary>
     public bool NativeJavaScript;
-    // pod.fcode
+    /// <summary>
+    /// Does the pod have fantom bytecode?
+    /// </summary>
     public bool FCode = true;
-    // pod.js
+    /// <summary>
+    /// Does the pod have javascript code?
+    /// </summary>
     public bool JavaScript;
 
-    public void Read(Stream propsFile)
+    internal void Read(Stream propsFile)
     {
         var props = new Properties();
         props.Load(propsFile);
@@ -78,7 +121,7 @@ public class PodMeta
         JavaScript = StringToBool(props.GetPropertyOrDefault("pod.js"), JavaScript);
     }
 
-    public void Write(Stream propsFile)
+    internal void Write(Stream propsFile)
     {
         var props = new Properties();
         WriteOptionalString(props, "pod.name", PodName);

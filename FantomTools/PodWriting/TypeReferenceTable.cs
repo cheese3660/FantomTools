@@ -3,7 +3,7 @@ using FantomTools.Utilities;
 
 namespace FantomTools.PodWriting;
 
-public class TypeReferenceTable(FantomTables tables) : FantomTable<TypeReference>
+internal class TypeReferenceTable(FantomTables tables) : FantomTable<TypeReference>
 {
     protected override void WriteSingle(FantomStreamWriter writer, TypeReference value)
     {
