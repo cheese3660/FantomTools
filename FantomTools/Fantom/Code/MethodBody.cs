@@ -85,13 +85,14 @@ public class MethodBody(Method method)
                 {
                     var count = reader.ReadU16();
                     currentOffset += 2;
-                    var inst = new SwitchInstruction()
+                    var inst = new SwitchInstruction
                     {
+                        OpCode = OperationType.Switch,
                         JumpTargets = new List<Instruction>(count)
                     };
                     for (var i = 0; i < count; i++)
                     {
-                        inst.JumpTargets[i] = null!;
+                        inst.JumpTargets.Add(null!);
                         var i1 = i;
                         PendLabel(reader.ReadU16(), target => inst.JumpTargets[i1] = target);
                         currentOffset += 2;
@@ -133,10 +134,20 @@ public class MethodBody(Method method)
                             { OpCode = operationType, Value = reader.PodReader.TypeRefs[reader.ReadU16()].Reference };
                     case OperationSignature.Register:
                         currentOffset += 2;
-                        return new RegisterInstruction
+                        if (method.IsStatic)
                         {
-                            OpCode = operationType, Value = method.Variables[reader.ReadU16()]
-                        };
+                            return new RegisterInstruction
+                            {
+                                OpCode = operationType, Value = method.Variables[reader.ReadU16()]
+                            };
+                        }
+                        else
+                        {
+                            var idx = reader.ReadU16();
+                            if (idx == 0) return new RegisterInstruction { OpCode = operationType };
+                            return new RegisterInstruction
+                                { OpCode = operationType, Value = method.Variables[idx - 1] };
+                        }
                     case OperationSignature.Field:
                         currentOffset += 2;
                         return new FieldInstruction
@@ -217,7 +228,7 @@ public class MethodBody(Method method)
                     DumpStringInstruction(instruction, sb, stringInstruction);
                     break;
                 case RegisterInstruction registerInstruction:
-                    sb.AppendLine($" {registerInstruction.Value.Name}");
+                    sb.AppendLine($" {registerInstruction.Value?.Name ?? "this"}");
                     break;
                 case TypeInstruction typeInstruction:
                     sb.AppendLine($" {typeInstruction.Value}");
@@ -274,7 +285,9 @@ public class MethodBody(Method method)
                     });
                     break;
                 case RegisterInstruction registerInstruction:
-                    bodyWriter.WriteU16(registerInstruction.Value.Index);
+                    if (method.IsStatic) bodyWriter.WriteU16(registerInstruction.Value.Index);
+                    else if (registerInstruction.Value is not null) bodyWriter.WriteU16((ushort)(registerInstruction.Value.Index + 1));
+                    else bodyWriter.WriteU16(0);
                     break;
                 case TypeInstruction typeInstruction:
                     bodyWriter.WriteU16(tables.TypeReferences.Intern(typeInstruction.Value));
@@ -334,7 +347,7 @@ public class MethodBody(Method method)
         switch (instruction.OpCode)
         {
             case OperationType.LoadStr or OperationType.LoadUri:
-                sb.AppendLine($" {HttpUtility.JavaScriptStringEncode(stringInstruction.Value)}");
+                sb.AppendLine($" {HttpUtility.JavaScriptStringEncode(stringInstruction.Value,true)}");
                 break;
             case OperationType.LoadDecimal:
                 sb.AppendLine($" {stringInstruction.Value}");

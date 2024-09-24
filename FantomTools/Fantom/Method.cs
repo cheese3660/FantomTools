@@ -68,6 +68,11 @@ public class Method
     public MethodReference Reference => new(ParentType.Reference, Name, ReturnType,
         Parameters.Select(x => x.Type).ToArray());
 
+    /// <summary>
+    /// Is this method static, i.e. does it only have a static constructor
+    /// </summary>
+    public bool IsStatic => Flags.HasFlag(Flags.Static);
+
     internal Method(Type parent)
     {
         ParentType = parent;

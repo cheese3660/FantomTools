@@ -153,10 +153,25 @@ public abstract class TypeReference : IEquatable<TypeReference>
 
             Consume();
             var name = new StringBuilder();
-            while (char.IsDigit(Peek) || char.IsLetter(Peek) || Peek == '_')
+            while (true)
             {
-                name.Append(Peek);
-                Consume();
+                while (char.IsDigit(Peek) || char.IsLetter(Peek) || Peek == '_' || Peek == '$')
+                {
+                    name.Append(Peek);
+                    Consume();
+                }
+
+                if (NextIs("::"))
+                {
+                    podName.Append($"::{name}");
+                    Consume();
+                    Consume();
+                    name.Clear();
+                }
+                else
+                {
+                    break;
+                }
             }
 
             return new BasicTypeReference(podName.ToString(), name.ToString());
