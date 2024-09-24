@@ -369,7 +369,7 @@ public class MethodBody(Method method)
         return;
     }
 
-    private void ReconstructOffsets()
+    public void ReconstructOffsets()
     {
         ushort offset = 0;
         foreach (var instruction in Instructions)
@@ -379,7 +379,7 @@ public class MethodBody(Method method)
         }
     }
 
-    private Dictionary<ushort, string> ConstructLabels()
+    public Dictionary<ushort, string> ConstructLabels()
     {
         ushort nextLabelNumber = 0;
         Dictionary<ushort, string> result = [];
