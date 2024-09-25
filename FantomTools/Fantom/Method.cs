@@ -270,6 +270,12 @@ public class Method
             variable.Emit(writer, tables);
         }
         Body.Emit(writer, tables);
+        Attributes.RemoveAll(x => x is ErrorTableAttribute);
+        var possibleNewErrorTable = Body.ReconstructErrorTable();
+        if (possibleNewErrorTable.Entries.Count > 0)
+        {
+            Attributes.Add(possibleNewErrorTable);
+        }
         writer.WriteU16((ushort)Attributes.Count);
         foreach (var attribute in Attributes)
         {

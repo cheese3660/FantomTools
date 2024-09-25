@@ -1,4 +1,5 @@
 ﻿using FantomTools.Fantom;
+using FantomTools.Fantom.Attributes;
 using FantomTools.Utilities;
 
 namespace FantomTools.PodReading;
@@ -53,5 +54,9 @@ internal class MethodReader : SlotReader
         if (_code == null) return;
         using var reader = new FantomStreamReader(_podReader, new MemoryStream(_code.Buffer));
         method.LoadBody(reader);
+        if (method.Attributes.OfType<ErrorTableAttribute>().FirstOrDefault() is { } errorTableAttribute)
+        {
+            method.Body.ReadErrorTable(errorTableAttribute);
+        }
     }
 }

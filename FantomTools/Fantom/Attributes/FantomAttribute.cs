@@ -25,6 +25,9 @@ public class FantomAttribute(string name)
             case "SourceFile":
                 reader.ReadU16();
                 return new SourceFileAttribute(reader.ReadUtf8());
+            case "ErrTable":
+                reader.ReadU16();
+                return new ErrorTableAttribute(reader);
             default:
                 return new FantomAttribute(name)
                 {

@@ -1,5 +1,7 @@
 ﻿using System.Text;
 using System.Web;
+using FantomTools.Fantom.Attributes;
+using FantomTools.Fantom.Code.ErrorHandling;
 using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
 using FantomTools.PodWriting;
@@ -19,11 +21,14 @@ public class MethodBody(Method method)
     /// The method that this is a body of
     /// </summary>
     public Method Method => method;
+    
     /// <summary>
     /// The instructions contained within this body
     /// </summary>
     public List<Instruction> Instructions = [];
 
+    public ErrorTable ErrorTable = new();
+    
     internal void Read(FantomStreamReader reader)
     {
         Dictionary<ushort, List<Action<Instruction>>> pendingLabels = [];
@@ -184,6 +189,74 @@ public class MethodBody(Method method)
             throw new Exception($"Unknown opcode: {opcode}");
         }
     }
+
+    internal void ReadErrorTable(ErrorTableAttribute attribute)
+    {
+        ReconstructOffsets();
+        foreach (var record in attribute.Entries)
+        {
+            var start = Instructions.First(x => x.Offset == record.TryStart);
+            var end = Instructions.First(x => x.Offset == record.TryEnd);
+            // Remove extraneous finally blocks
+            if (start.OpCode is OperationType.CatchAllStart or OperationType.CatchErrStart) continue;
+            var handler = Instructions.First(x => x.Offset == record.Handler);
+            var possibleTryBlock = ErrorTable.TryBlocks.FirstOrDefault(x => x.Start == start && x.End == end);
+            if (possibleTryBlock is not null)
+            {
+                if (end.OpCode is not OperationType.FinallyStart)
+                {
+                    possibleTryBlock.ErrorHandlers[record.ErrorType] = handler;
+                }
+                else
+                {
+                    possibleTryBlock.Finally = handler;
+                }
+            }
+            else
+            {
+                if (end.OpCode is not OperationType.FinallyStart)
+                {
+                    var tb = new TryBlock
+                    {
+                        Start = start,
+                        End = end,
+                        ErrorHandlers = new Dictionary<TypeReference, Instruction>
+                        {
+                            [record.ErrorType] = handler
+                        }
+                    };
+                    ErrorTable.TryBlocks.Add(tb);
+                }
+                else
+                {
+                    var tb = new TryBlock
+                    {
+                        Start = start,
+                        End = end,
+                        ErrorHandlers = [],
+                        Finally = handler
+                    };
+                    ErrorTable.TryBlocks.Add(tb);
+                }
+            }
+        }
+    }
+
+    internal ErrorTableAttribute ReconstructErrorTable()
+    {
+        ReconstructOffsets();
+        ErrorTableAttribute attribute = new();
+        foreach (var block in ErrorTable.TryBlocks)
+        {
+            var start = block.Start.Offset;
+            var end = block.End.Offset;
+            foreach (var (type, handler) in block.ErrorHandlers)
+            {
+                attribute.Entries.Add(new ErrorTableEntry(start, end, handler.Offset, type));
+            }
+        }
+        return attribute;
+    }
     
     /// <summary>
     /// Get a textual disassembly of the method body
@@ -194,9 +267,59 @@ public class MethodBody(Method method)
         ReconstructOffsets();
         var labels = ConstructLabels();
         var padding = labels.Count > 0 ? labels.Values.Select(x => x.Length).Max() + 2 : 4;
+        var (tryStarts, tryEnds, catches, finallies) = GetErrorHandlingInformation();
         var sb = new StringBuilder();
+        // So now we need to build up a list of handlers
+        var catchStack = new Stack<(string, string)>();
+        var finallyStack = new Stack<string>();
         foreach (var instruction in Instructions)
         {
+            
+            if (tryEnds.TryGetValue(instruction, out var tryEnd))
+            {
+                for (var i = 0; i < padding; i++)
+                {
+                    sb.Append(' ');
+                }
+
+                sb.AppendLine($"/* end try-block {tryEnd} */");
+            }
+
+            if (catches.TryGetValue(instruction, out var c))
+            {
+                for (var i = 0; i < padding; i++)
+                {
+                    sb.Append(' ');
+                }
+
+                sb.AppendLine($"/* begin try-block {c.block} catch {c.type} */");
+                catchStack.Push((c.block,c.type));
+            }
+            if (finallies.TryGetValue(instruction, out var f))
+            {
+                for (var i = 0; i < padding; i++)
+                {
+                    sb.Append(' ');
+                }
+
+                sb.AppendLine($"/* begin {f} finally */");
+                finallyStack.Push(f);
+            }
+            
+
+            if (tryStarts.TryGetValue(instruction, out var tryStartList))
+            {
+                foreach (var tryBlock in tryStartList)
+                {
+                    for (var i = 0; i < padding; i++)
+                    {
+                        sb.Append(' ');
+                    }
+
+                    sb.AppendLine($"/* begin try-block {tryBlock} */");
+                }
+            }
+
             if (labels.TryGetValue(instruction.Offset, out var label))
             {
                 sb.Append($"{label}: ");
@@ -252,6 +375,39 @@ public class MethodBody(Method method)
                 }
                 default:
                     sb.AppendLine();
+                    break;
+            }
+
+            switch (instruction.OpCode)
+            {
+                case OperationType.CatchEnd when catchStack.Count > 0:
+                {
+                    var (block, type) = catchStack.Pop();
+                    for (var i = 0; i < padding; i++)
+                    {
+                        sb.Append(' ');
+                    }
+
+                    sb.AppendLine($"/* end try-block {block} catch {type} */");
+                    break;
+                }
+                case OperationType.CatchEnd:
+                    sb.AppendLine("/* unknown catch block end??? corrupted error table or bad code? */");
+                    break;
+                case OperationType.FinallyEnd when finallyStack.Count > 0:
+                {
+                    var block = finallyStack.Pop();
+                    for (var i = 0; i < padding; i++)
+                    {
+                        sb.Append(' ');
+                    }
+                    sb.AppendLine($"/* end try-block {block} finally */");
+                    break;
+                }
+                case OperationType.FinallyEnd:
+                    sb.AppendLine("/* unknown finally block end??? corrupted error table or bad code? */");
+                    break;
+                default:
                     break;
             }
         }
@@ -404,6 +560,41 @@ public class MethodBody(Method method)
         return result;
     }
 
+    
+    // Could likely be made public?
+    internal (Dictionary<Instruction, List<string>> Starts, Dictionary<Instruction, string> Ends, Dictionary<Instruction, (string block, string type)> Handlers, Dictionary<Instruction, string> Finallies) GetErrorHandlingInformation()
+    {
+        Dictionary<Instruction, List<string>> starts = [];
+        Dictionary<Instruction, string> ends = [];
+        Dictionary<Instruction, (string block,string type)> handlers = [];
+        Dictionary<Instruction, string> finallies = []; 
+        var i = 0;
+        foreach (var handler in ErrorTable.TryBlocks)
+        {
+            if (starts.TryGetValue(handler.Start, out var startsList))
+            {
+                startsList.Add($"T{i}");
+            }
+            else
+            {
+                starts[handler.Start] = [$"T{i}"];
+            }
+            ends[handler.End] = $"T{i}";
+
+            foreach (var (type, inst) in handler.ErrorHandlers)
+            {
+                handlers[inst] = ($"T{i}", type.ToString());
+            }
+
+            if (handler.Finally is { } @finally)
+            {
+                finallies[handler.Finally] = $"T{i}";
+            }
+            i++;
+        }
+        return (starts, ends, handlers, finallies);
+    }
+    
     /// <summary>
     /// Get a cursor for easier method modification
     /// </summary>

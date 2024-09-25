@@ -84,6 +84,10 @@ internal class TypeReader(PodReader podReader, TypeReferenceReader self, TypeRef
         {
             // Everything else can be done in the method type
             var newMethod = t.AddMethod(method.Name, method.ReturnType.Reference);
+            foreach (var attr in method.Attrs!.Attributes)
+            {
+                newMethod.Attributes.Add(attr);
+            }
             method.ConstructMethod(newMethod);
         }
         return t;
