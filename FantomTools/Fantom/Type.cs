@@ -243,7 +243,12 @@ public class Type(Pod pod, string name) : IEquatable<Type>
         sb.AppendLine("{");
         foreach (var field in Fields)
         {
-            // TODO: Field dumping
+            var dumped = field.Dump();
+            var lines = dumped.Split('\n').Select(x => x.TrimEnd());
+            foreach (var line in lines)
+            {
+                sb.AppendLine($"    {line}");
+            }
         }
         if (Fields.Count > 0) sb.AppendLine();
         foreach (var method in Methods)
