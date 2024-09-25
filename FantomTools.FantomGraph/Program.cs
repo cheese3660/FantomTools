@@ -12,6 +12,7 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
     sb.AppendLine("    subgraph " + type.Name);
     foreach (var method in type.Methods)
     {
+        const string methodIndent = "            ";
         var methodPrefix = $"{type.Name}::{method.Name}";
         sb.AppendLine("        subgraph " + methodPrefix);
         method.Body.ReconstructOffsets();
@@ -21,26 +22,40 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
         // generate a list of labels used in the method, for easily labeling later (ie. by hand when analyzing)
         if (!sortedLabels.ContainsKey(0))
         {
-            sb.AppendLine($"            {methodPrefix}_start[start]");
+            sb.AppendLine($"{methodIndent}{methodPrefix}_start[start]");
         }
         foreach (var label in sortedLabels)
         {
-            sb.AppendLine($"            {methodPrefix}_{label.Value}[{label.Value}]");
+            sb.AppendLine($"{methodIndent}{methodPrefix}_{label.Value}[{label.Value}]");
         }
 
         sb.AppendLine();
         
         // iterate over the instructions in the method body, tracking which label we're under
         var curLabel = "start";
+        var generateJumpToNext = true; // tracks if we need to generate a jump to the new label when changing labels
+        
+        
         foreach (var instr in method.Body.Instructions)
         {
             // figure out if our current label changed
             var possibleNewLabels = sortedLabels
-                .Where(l => l.Key > instr.Offset)
+                .Where(l => l.Key == instr.Offset)
                 .ToList();
             if (possibleNewLabels.Count != 0)
-                curLabel = possibleNewLabels.FirstOrDefault().Value;
+            {
+                var newLabel = possibleNewLabels.FirstOrDefault().Value;
+                if (generateJumpToNext)
+                    sb.AppendLine($"{methodIndent}{methodPrefix}_{curLabel} --> {methodPrefix}_{newLabel}");
+                generateJumpToNext = true;
+                curLabel = newLabel;
+            }
 
+            if (instr.OpCode is OperationType.Jump or OperationType.Leave or OperationType.JumpFinally)
+            {
+                generateJumpToNext = false;
+            }
+            
             switch (instr)
             {
                 case JumpInstruction jumpInstruction:
@@ -48,7 +63,7 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
                     var destLabel = sortedLabels[jumpInstruction.Target.Offset];
                     var opcodeLabel = Operations.OperationsByType[jumpInstruction.OpCode].Name;
                 
-                    sb.AppendLine($"        {methodPrefix}_{curLabel} -- {opcodeLabel} --> {methodPrefix}_{destLabel}");
+                    sb.AppendLine($"{methodIndent}{methodPrefix}_{curLabel} -- {opcodeLabel} --> {methodPrefix}_{destLabel}");
                     break;
                 }
                 case SwitchInstruction switchInstruction:
@@ -58,7 +73,7 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
                     {
                         var destLabel = sortedLabels[target.Offset];
                         sb.AppendLine(
-                            $"            {methodPrefix}_{curLabel} -- {opcodeLabel} --> {methodPrefix}_{destLabel}");
+                            $"{methodIndent}{methodPrefix}_{curLabel} -- {opcodeLabel} --> {methodPrefix}_{destLabel}");
                     }
                     break;
                 }
