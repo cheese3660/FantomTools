@@ -302,7 +302,7 @@ public class MethodBody(Method method)
                     sb.Append(' ');
                 }
 
-                sb.AppendLine($"/* begin {f} finally */");
+                sb.AppendLine($"/* begin try-block {f} finally */");
                 finallyStack.Push(f);
             }
             
