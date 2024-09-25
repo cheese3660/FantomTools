@@ -15,15 +15,14 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
         const string methodIndent = "            ";
         var methodPrefix = $"{type.Name}::{method.Name}";
         sb.AppendLine("        subgraph " + methodPrefix);
+        var builder = method.Body.DisassemblyBuilder;
+        var generatedLabels = builder.Labels.ToDictionary();
+        // Reconstruct offsets so we can sort stuff
         method.Body.ReconstructOffsets();
-        var generatedLabels = method.Body.ConstructLabels();
-        var sortedLabels = new SortedList<ushort, string>(generatedLabels);
+        var sortedLabels = new SortedList<Instruction, string>(generatedLabels, Comparer<Instruction>.Create((x,y) => x.Offset.CompareTo(y.Offset)));
         
         // generate a list of labels used in the method, for easily labeling later (ie. by hand when analyzing)
-        if (!sortedLabels.ContainsKey(0))
-        {
-            sb.AppendLine($"{methodIndent}{methodPrefix}_start[start]");
-        }
+        
         foreach (var label in sortedLabels)
         {
             sb.AppendLine($"{methodIndent}{methodPrefix}_{label.Value}[{label.Value}]");
@@ -40,7 +39,7 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
         {
             // figure out if our current label changed
             var possibleNewLabels = sortedLabels
-                .Where(l => l.Key == instr.Offset)
+                .Where(l => l.Key == instr)
                 .ToList();
             if (possibleNewLabels.Count != 0)
             {
@@ -60,7 +59,7 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
             {
                 case JumpInstruction jumpInstruction:
                 {
-                    var destLabel = sortedLabels[jumpInstruction.Target.Offset];
+                    var destLabel = sortedLabels[jumpInstruction.Target];
                     var opcodeLabel = Operations.OperationsByType[jumpInstruction.OpCode].Name;
                 
                     sb.AppendLine($"{methodIndent}{methodPrefix}_{curLabel} -- {opcodeLabel} --> {methodPrefix}_{destLabel}");
@@ -71,7 +70,7 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
                     var opcodeLabel = Operations.OperationsByType[switchInstruction.OpCode].Name;
                     foreach (var target in switchInstruction.JumpTargets)
                     {
-                        var destLabel = sortedLabels[target.Offset];
+                        var destLabel = sortedLabels[target];
                         sb.AppendLine(
                             $"{methodIndent}{methodPrefix}_{curLabel} -- {opcodeLabel} --> {methodPrefix}_{destLabel}");
                     }
