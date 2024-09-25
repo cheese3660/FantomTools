@@ -2,9 +2,11 @@
 using System.Web;
 using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
+using JetBrains.Annotations;
 
 namespace FantomTools.Fantom.Code.DisassemblyTools;
 
+[PublicAPI]
 public class DisassemblyBuilder
 {
     public readonly MethodBody Body;
@@ -28,18 +30,21 @@ public class DisassemblyBuilder
 
 
 
+    // TODO: Decompilation tool
     public string DisassembleAll(bool addDecompilationGuesses = false)
     {
         var labels = ConstructLabels();
         var padding = labels.Count > 0 ? labels.Values.Select(x => x.Length).Max() + 2 : 4;
         var (tryStarts, tryEnds, catches, finallies) = GetErrorHandlingInformation();
-        var sb = new StringBuilder();
+        var disassemblyBuilder = new StringBuilder();
+        StatementDecompilationBuilder? decompilationBuilder = addDecompilationGuesses ? new() : null;
+        var isVoid = addDecompilationGuesses && Method.ReturnType == TypeReference.Void;
         // So now we need to build up a list of handlers
         var catchStack = new Stack<(string, string)>();
         var finallyStack = new Stack<string>();
         foreach (var instruction in Body.Instructions)
         {
-            
+            var sb = new StringBuilder();
             if (tryEnds.TryGetValue(instruction, out var tryEnd))
             {
                 for (var i = 0; i < padding; i++)
@@ -175,8 +180,20 @@ public class DisassemblyBuilder
                 default:
                     break;
             }
+
+            if (addDecompilationGuesses)
+            {
+                var consumed = decompilationBuilder!.Consume(instruction, sb.ToString(), padding, isVoid, labels);
+                if (consumed is not null) disassemblyBuilder.Append(consumed);
+            }
+            else
+            {
+                disassemblyBuilder.Append(sb);
+            }
         }
-        return sb.ToString();
+
+        if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+        return disassemblyBuilder.ToString();
     }
 
     public string DisassembleRange(Instruction? begin, Instruction? end = null, bool addDecompilationGuesses = false)

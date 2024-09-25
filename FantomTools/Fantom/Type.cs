@@ -229,9 +229,10 @@ public class Type(Pod pod, string name) : IEquatable<Type>
     /// <summary>
     /// Generate a textual representation of the type
     /// </summary>
-    /// <param name="dumpBodies">Should method bytecode disasembly be dumped?</param>
+    /// <param name="dumpBodies">Should method bytecode disassembly be dumped?</param>
+    /// <param name="dumpDecompilationGuesses">Should method bytecode decompilation guesses be dumped?</param>
     /// <returns>The textual representation</returns>
-    public string Dump(bool dumpBodies = false)
+    public string Dump(bool dumpBodies = false, bool dumpDecompilationGuesses=false)
     {
         var sb = new StringBuilder();
         sb.Append(Flags.GetString());
@@ -252,7 +253,7 @@ public class Type(Pod pod, string name) : IEquatable<Type>
         }
         foreach (var method in Methods)
         {
-            var dumped = method.Dump(dumpBodies);
+            var dumped = method.Dump(dumpBodies,dumpDecompilationGuesses);
             var lines = dumped.Split('\n').Select(x => x.TrimEnd());
             foreach (var line in lines)
             {

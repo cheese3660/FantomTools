@@ -225,13 +225,14 @@ public class Method
         var p = Parameters.ToList();
         return argumentTypes.Length == p.Count && argumentTypes.Zip(p).Any(x => x.First != x.Second.Type);
     }
-    
+
     /// <summary>
     /// Dump this method into textual form
     /// </summary>
     /// <param name="dumpBody">Should this dump the disassembly of the fantom bytecode?</param>
+    /// <param name="dumpDecompilationGuesses">Should the dump include decompilation guesses</param>
     /// <returns>The textual form of the method</returns>
-    public string Dump(bool dumpBody=false)
+    public string Dump(bool dumpBody=false, bool dumpDecompilationGuesses=false)
     {
         var sb = new StringBuilder();
         sb.Append(Flags.GetString());
@@ -246,7 +247,7 @@ public class Method
 
         if (dumpBody)
         {
-            sb.Append(Body.Dump());
+            sb.Append(Body.Dump(dumpDecompilationGuesses));
         }
         else
         {

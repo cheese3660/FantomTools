@@ -263,7 +263,7 @@ public class MethodBody(Method method)
     /// Get a textual disassembly of the method body
     /// </summary>
     /// <returns>The textual disassembly</returns>
-    public string Dump() => DisassemblyBuilder.DisassembleAll();
+    public string Dump(bool addDecompilationGuesses=false) => DisassemblyBuilder.DisassembleAll(addDecompilationGuesses);
 
     internal void Emit(FantomStreamWriter writer, FantomTables tables)
     {
