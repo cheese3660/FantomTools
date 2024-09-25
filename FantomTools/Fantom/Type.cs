@@ -250,7 +250,6 @@ public class Type(Pod pod, string name) : IEquatable<Type>
                 sb.AppendLine($"    {line}");
             }
         }
-        if (Fields.Count > 0) sb.AppendLine();
         foreach (var method in Methods)
         {
             var dumped = method.Dump(dumpBodies);
