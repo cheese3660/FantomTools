@@ -65,6 +65,8 @@ internal class StatementDecompilationBuilder
             case OperationType.LoadInstance when _decompiledStatements.Count > 0:
                 _decompiledStatements.Push($"{_decompiledStatements.Pop()}.{(instruction as FieldInstruction)!.Value.Name}");
                 return null;
+            case OperationType.Throw when _decompiledStatements.Count == 1:
+                return GenerateDisassemblyComment($"throw {_decompiledStatements.Pop()}", decompilationPadding);
             case OperationType.LoadStatic or OperationType.LoadMixinStatic:
             {
                 _decompiledStatements.Push($"{fieldInst!.Value.Type}.{fieldInst.Value.Name}");
