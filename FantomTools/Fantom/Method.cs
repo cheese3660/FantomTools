@@ -80,6 +80,19 @@ public class Method
         Body = new MethodBody(this);
     }
 
+
+    private string DeduplicateVariableName(string name)
+    {
+        var names = Variables.Select(x => x.Name).ToHashSet();
+        if (!names.Contains(name)) return name;
+        var i = 0;
+        while (true)
+        {
+            if (!names.Contains($"{name}${i}")) return $"{name}${i}";
+            i += 1;
+        }
+    }
+    
     /// <summary>
     /// Add a parameter to this method
     /// </summary>
@@ -88,24 +101,22 @@ public class Method
     /// <returns>The new parameter</returns>
     public MethodVariable AddParameter(string parameterName, TypeReference? parameterType = null)
     {
+        
         parameterType ??= TypeReference.Object;
         var index = 0;
         var found = false;
         
-        // I want to be able to 
         for (var i = 0; i < Variables.Count; i++)
         {
-            if (found || !Variables[i].IsParameter)
-            {
-                if (!found) index = i;
-                found = true;
-                Variables[i].Index += 1;
-            }
+            if (!found && Variables[i].IsParameter) continue;
+            if (!found) index = i;
+            found = true;
+            Variables[i].Index += 1;
         }
         _variables.Insert(index, new MethodVariable(true)
         {
             Index = (ushort)index,
-            Name = parameterName,
+            Name = DeduplicateVariableName(parameterName),
             Type = parameterType,
         });
         return Variables[index];
@@ -124,7 +135,7 @@ public class Method
         _variables.Add(new MethodVariable(false)
         {
             Index = (ushort)index,
-            Name = localName,
+            Name = DeduplicateVariableName(localName),
             Type = localType,
         });
         return Variables[index];
@@ -225,13 +236,14 @@ public class Method
         var p = Parameters.ToList();
         return argumentTypes.Length == p.Count && argumentTypes.Zip(p).Any(x => x.First != x.Second.Type);
     }
-    
+
     /// <summary>
     /// Dump this method into textual form
     /// </summary>
     /// <param name="dumpBody">Should this dump the disassembly of the fantom bytecode?</param>
+    /// <param name="dumpDecompilationGuesses">Should the dump include decompilation guesses</param>
     /// <returns>The textual form of the method</returns>
-    public string Dump(bool dumpBody=false)
+    public string Dump(bool dumpBody=false, bool dumpDecompilationGuesses=false)
     {
         var sb = new StringBuilder();
         sb.Append(Flags.GetString());
@@ -246,7 +258,7 @@ public class Method
 
         if (dumpBody)
         {
-            sb.Append(Body.Dump());
+            sb.Append(Body.Dump(dumpDecompilationGuesses));
         }
         else
         {

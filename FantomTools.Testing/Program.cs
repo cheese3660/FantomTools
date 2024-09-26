@@ -28,7 +28,7 @@ switch (args[0])
         var sb = new StringBuilder();
         foreach (var type in pod.Types)
         {
-            sb.AppendLine(type.Dump(true));
+            sb.AppendLine(type.Dump(true,true));
         }
         File.WriteAllText(args[2], sb.ToString());
         break;
