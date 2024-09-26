@@ -16,7 +16,7 @@ namespace FantomTools.Fantom.Code;
 /// </summary>
 /// <param name="method">The method</param>
 [PublicAPI]
-public class MethodBody(Method method)
+public partial class MethodBody(Method method)
 {
     /// <summary>
     /// The method that this is a body of
@@ -204,7 +204,7 @@ public class MethodBody(Method method)
             var possibleTryBlock = ErrorTable.TryBlocks.FirstOrDefault(x => x.Start == start && x.End == end);
             if (possibleTryBlock is not null)
             {
-                if (end.OpCode is not OperationType.FinallyStart)
+                if (handler.OpCode is not OperationType.FinallyStart)
                 {
                     possibleTryBlock.ErrorHandlers[record.ErrorType] = handler;
                 }
@@ -215,7 +215,7 @@ public class MethodBody(Method method)
             }
             else
             {
-                if (end.OpCode is not OperationType.FinallyStart)
+                if (handler.OpCode is not OperationType.FinallyStart)
                 {
                     var tb = new TryBlock
                     {
@@ -251,9 +251,45 @@ public class MethodBody(Method method)
         {
             var start = block.Start.Offset;
             var end = block.End.Offset;
+            var final = block.Finally;
             foreach (var (type, handler) in block.ErrorHandlers)
             {
                 attribute.Entries.Add(new ErrorTableEntry(start, end, handler.Offset, type));
+                if (final != null)
+                {
+                    // Now we really need to search for the end of the catch block
+                    var index = Instructions.IndexOf(handler);
+                    var count = 0;
+                    var found = false;
+                    for (var i = index + 1; i < Instructions.Count; i++)
+                    {
+                        if (Instructions[i].OpCode is OperationType.CatchAllStart or OperationType.CatchErrStart)
+                        {
+                            count += 1;
+                        } else if (Instructions[i].OpCode is OperationType.CatchEnd)
+                        {
+                            if (count > 0)
+                            {
+                                count -= 1;
+                                continue;
+                            }
+
+                            attribute.Entries.Add(new ErrorTableEntry(handler.Offset, Instructions[i].Offset,
+                                final.Offset, TypeReference.Err));
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        throw new Exception("Invalid catch block!");
+                    }
+                }
+            }
+            if (final != null)
+            {
+                attribute.Entries.Add(new ErrorTableEntry(start, end, final.Offset, TypeReference.Err));
             }
         }
         return attribute;

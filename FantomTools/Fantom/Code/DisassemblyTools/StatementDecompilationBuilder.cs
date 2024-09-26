@@ -120,6 +120,9 @@ internal class StatementDecompilationBuilder
             case NullSafetyState.NoSafety:
                 switch (instruction.OpCode)
                 {
+                    case OperationType.CatchErrStart:
+                        _decompiledStatements.Push("$lastError");
+                        return null;
                     case OperationType.Dup when _decompiledStatements.Count >= 1:
                         // Now we must go into the just duplicated state
                         _nullSafety = NullSafetyState.JustDuplicated;
@@ -309,7 +312,6 @@ internal class StatementDecompilationBuilder
                             isVoidMethod ? "return" : $"return {_decompiledStatements.Pop()}", decompilationPadding);
                     case OperationType.Jump when _nullPropagationCount > 0:
                     {
-                        Console.WriteLine($"JustDidNullPropagationSkip");
                         _nullPropagationCount -= 1;
                         _nullSafety = NullSafetyState.JustDidNullPropagationSkip;
                         return null;
@@ -367,7 +369,7 @@ internal class StatementDecompilationBuilder
     private string GenerateDisassemblyComment(string disassembly, int decompilationPadding)
     {
         var padded = new string(' ', decompilationPadding);
-        var result = $"\n{padded}/* BEGIN: {disassembly} */\n{_statementBuilder}{padded}/* END */\n";
+        var result = $"{padded}/* BEGIN: {disassembly} */\n{_statementBuilder}{padded}/* END */\n\n";
         _statementBuilder.Clear();
         _decompiledStatements.Clear();
         _nullPropagationCount = 0;

@@ -80,6 +80,19 @@ public class Method
         Body = new MethodBody(this);
     }
 
+
+    private string DeduplicateVariableName(string name)
+    {
+        var names = Variables.Select(x => x.Name).ToHashSet();
+        if (!names.Contains(name)) return name;
+        var i = 0;
+        while (true)
+        {
+            if (!names.Contains($"{name}${i}")) return $"{name}${i}";
+            i += 1;
+        }
+    }
+    
     /// <summary>
     /// Add a parameter to this method
     /// </summary>
@@ -88,24 +101,22 @@ public class Method
     /// <returns>The new parameter</returns>
     public MethodVariable AddParameter(string parameterName, TypeReference? parameterType = null)
     {
+        
         parameterType ??= TypeReference.Object;
         var index = 0;
         var found = false;
         
-        // I want to be able to 
         for (var i = 0; i < Variables.Count; i++)
         {
-            if (found || !Variables[i].IsParameter)
-            {
-                if (!found) index = i;
-                found = true;
-                Variables[i].Index += 1;
-            }
+            if (!found && Variables[i].IsParameter) continue;
+            if (!found) index = i;
+            found = true;
+            Variables[i].Index += 1;
         }
         _variables.Insert(index, new MethodVariable(true)
         {
             Index = (ushort)index,
-            Name = parameterName,
+            Name = DeduplicateVariableName(parameterName),
             Type = parameterType,
         });
         return Variables[index];
@@ -124,7 +135,7 @@ public class Method
         _variables.Add(new MethodVariable(false)
         {
             Index = (ushort)index,
-            Name = localName,
+            Name = DeduplicateVariableName(localName),
             Type = localType,
         });
         return Variables[index];

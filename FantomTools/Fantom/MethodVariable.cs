@@ -25,6 +25,9 @@ public class MethodVariable
     /// </summary>
     public readonly bool IsParameter;
 
+    internal bool IsDuplicate;
+    
+
     
     /// <summary>
     /// The attributes on this variable

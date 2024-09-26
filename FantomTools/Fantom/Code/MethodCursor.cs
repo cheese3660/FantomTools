@@ -77,6 +77,17 @@ public class MethodCursor(MethodBody body)
                 }
             }
         }
+        
+        foreach (var tryCatch in Body.ErrorTable.TryBlocks)
+        {
+            if (tryCatch.Start == Current) tryCatch.Start = newInstruction;
+            if (tryCatch.End == Current) tryCatch.End = newInstruction;
+            if (tryCatch.Finally == Current) tryCatch.End = newInstruction;
+            foreach (var (ty, handler) in tryCatch.ErrorHandlers)
+            {
+                if (handler == Current) tryCatch.ErrorHandlers[ty] = newInstruction;
+            }
+        }
         body.Instructions[Index] = newInstruction;
     }
 
@@ -110,6 +121,34 @@ public class MethodCursor(MethodBody body)
 
                     break;
                 }
+            }
+        }
+        foreach (var tryCatch in Body.ErrorTable.TryBlocks)
+        {
+            if (tryCatch.Start == Current)
+            {
+                if (jumpRetargetMode == RetargetMode.Error)
+                    throw new Exception("Removing instruction will retarget jump!");
+                tryCatch.Start = body.Instructions[Index + 1];
+            }
+            if (tryCatch.End == Current)
+            {
+                if (jumpRetargetMode == RetargetMode.Error)
+                    throw new Exception("Removing instruction will retarget jump!");
+                tryCatch.End = body.Instructions[Index + 1];
+            }
+            if (tryCatch.Finally == Current)
+            {
+                if (jumpRetargetMode == RetargetMode.Error)
+                    throw new Exception("Removing instruction will retarget jump!");
+                tryCatch.Finally = body.Instructions[Index + 1];
+            }
+            foreach (var (ty, handler) in tryCatch.ErrorHandlers)
+            {
+                if (handler != Current) continue;
+                if (jumpRetargetMode == RetargetMode.Error)
+                    throw new Exception("Removing instruction will retarget jump!");
+                tryCatch.ErrorHandlers[ty] = body.Instructions[Index+1];
             }
         }
         body.Instructions.RemoveAt(Index);

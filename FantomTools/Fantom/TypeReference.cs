@@ -21,6 +21,11 @@ public abstract class TypeReference : IEquatable<TypeReference>
     /// sys::Void
     /// </summary>
     public static readonly TypeReference Void = "sys::Void";
+
+    /// <summary>
+    /// sys::Err
+    /// </summary>
+    public static readonly TypeReference Err = "sys::Err";
     
     /// <summary>
     /// Parse a type string into a TypeReference

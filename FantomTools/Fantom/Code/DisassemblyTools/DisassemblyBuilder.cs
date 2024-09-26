@@ -30,160 +30,133 @@ public class DisassemblyBuilder
 
 
 
-    // TODO: Decompilation tool
-    public string DisassembleAll(bool addDecompilationGuesses = false)
+    // Time to do a better decompilation tool
+    public string DisassembleAll(bool addDecompilationGuesses = false) => DisassembleRange(null, null, true, true, true);
+
+    public string DisassembleRange(Instruction? begin, Instruction? end = null, bool addLabels = false, bool addDecompilationGuesses = false, bool addTryCatches=false)
     {
+        var startIndex = begin is null ? 0 : Body.Instructions.IndexOf(begin);
+        if (startIndex == -1) throw new ArgumentException("Instruction is not in body!", nameof(begin));
+        var endIndex = end is null ? Body.Instructions.Count - 1 : Body.Instructions.IndexOf(end);
+        if (startIndex > endIndex) return "";
         var labels = ConstructLabels();
-        var padding = labels.Count > 0 ? labels.Values.Select(x => x.Length).Max() + 2 : 4;
-        var (tryStarts, tryEnds, catches, finallies) = GetErrorHandlingInformation();
+        var padding = addLabels ? labels.Count > 0 ? labels.Values.Select(x => x.Length).Max() + 2 : 4 : 4;
+        //var (tryStarts, tryEnds, catches, finallies) = addTryCatches ? GetErrorHandlingInformation() : (null,null,null,null);
         var disassemblyBuilder = new StringBuilder();
         StatementDecompilationBuilder? decompilationBuilder = addDecompilationGuesses ? new() : null;
         var isVoid = addDecompilationGuesses && Method.ReturnType == TypeReference.Void;
         // So now we need to build up a list of handlers
+        var tryIndentation = 0;
         var catchStack = new Stack<(string, string)>();
         var finallyStack = new Stack<string>();
-        foreach (var instruction in Body.Instructions)
+        var shouldSkipNextInstruction = false;
+        var nextIndex = 0;
+        for (var index = startIndex; index <= endIndex; index++)
         {
-            var sb = new StringBuilder();
-            if (tryEnds.TryGetValue(instruction, out var tryEnd))
+            nextIndex += 1;
+            if (shouldSkipNextInstruction)
             {
-                for (var i = 0; i < padding; i++)
-                {
-                    sb.Append(' ');
-                }
-
-                sb.AppendLine($"/* end try-block {tryEnd} */");
+                shouldSkipNextInstruction = false;
+                continue;
             }
+            var instruction = Body.Instructions[index];
 
-            if (catches.TryGetValue(instruction, out var c))
+            if (addTryCatches)
             {
-                for (var i = 0; i < padding; i++)
+                if (TryEnds.TryGetValue(instruction, out var tryEnd))
                 {
-                    sb.Append(' ');
+                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    tryIndentation -= 1;
+                    Indent(disassemblyBuilder);
+                    disassemblyBuilder.AppendLine($"}} /* {tryEnd} */");
                 }
-
-                sb.AppendLine($"/* begin try-block {c.block} catch {c.type} */");
-                catchStack.Push((c.block,c.type));
-            }
-            if (finallies.TryGetValue(instruction, out var f))
-            {
-                for (var i = 0; i < padding; i++)
+                if (TryStarts.TryGetValue(instruction, out var tryStartList))
                 {
-                    sb.Append(' ');
-                }
-
-                sb.AppendLine($"/* begin try-block {f} finally */");
-                finallyStack.Push(f);
-            }
-            
-
-            if (tryStarts.TryGetValue(instruction, out var tryStartList))
-            {
-                foreach (var tryBlock in tryStartList)
-                {
-                    for (var i = 0; i < padding; i++)
+                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    foreach (var tryBlock in tryStartList)
                     {
-                        sb.Append(' ');
+                        Indent(disassemblyBuilder);
+                        disassemblyBuilder.AppendLine($"try /* {tryBlock} */ {{");
+                        tryIndentation += 1;
                     }
-
-                    sb.AppendLine($"/* begin try-block {tryBlock} */");
+                }
+                if (CatchStarts.TryGetValue(instruction, out var c))
+                {
+                    
+                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    Indent(disassemblyBuilder);
+                    
+                    if (instruction.OpCode == OperationType.CatchErrStart)
+                    {
+                        if (nextIndex < Body.Instructions.Count &&
+                            Body.Instructions[nextIndex].OpCode == OperationType.StoreVar)
+                        {
+                            var name = (Body.Instructions[nextIndex] as RegisterInstruction)?.Value?.Name ?? "this";
+                            disassemblyBuilder.AppendLine($"catch ({c.typeName} {name}) /* {c.blockName} */ {{");
+                            shouldSkipNextInstruction = true;
+                        }
+                        else
+                        {
+                            disassemblyBuilder.AppendLine($"catch ({c.typeName} <unknown>) /* {c.blockName} */ {{");
+                        }
+                    }
+                    else
+                    {
+                        disassemblyBuilder.AppendLine($"catch /* {c.blockName} */ {{");
+                    }
+                    catchStack.Push((c.blockName,c.typeName));
+                    continue;
+                }
+                if (FinallyStarts.TryGetValue(instruction, out var f))
+                {
+                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    if (labels.TryGetValue(instruction, out var lab))
+                    {
+                        Indent(disassemblyBuilder, lab);
+                    }
+                    else
+                    {
+                        Indent(disassemblyBuilder);
+                    }
+                    disassemblyBuilder.AppendLine($"finally /* {f} */ {{");
+                    finallyStack.Push(f);
+                    continue;
                 }
             }
-
-            if (labels.TryGetValue(instruction, out var label))
+            var sb = new StringBuilder();
+            if (addLabels && labels.TryGetValue(instruction, out var label))
             {
-                sb.Append($"{label}: ");
-                for (var i = $"{label}: ".Length; i < padding; i++)
-                {
-                    sb.Append(' ');
-                }
+                Indent(sb,label);
             }
             else
             {
-                for (var i = 0; i < padding; i++)
-                {
-                    sb.Append(' ');
-                }
+                Indent(sb);
             }
-
-            sb.Append($"{Operations.Operations.OperationsByType[instruction.OpCode].Name}");
-            switch (instruction)
+            sb.Append(DisassembleSingle(instruction));
+            if (addTryCatches)
             {
-                case IntegerInstruction integerInstruction:
+                if (instruction.OpCode == OperationType.FinallyEnd && finallyStack.Count > 0)
                 {
-                    DumpIntegerInstruction(sb, integerInstruction, instruction);
-                    break;
+                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    var value = finallyStack.Pop();
+                    Indent(disassemblyBuilder);
+                    disassemblyBuilder.AppendLine($"}} /* {value} finally */");
+                    continue;
                 }
-                case FloatInstruction floatInstruction:
-                    sb.AppendLine($" {floatInstruction.Value}");
-                    break;
-                case StringInstruction stringInstruction:
-                    DumpStringInstruction(instruction, sb, stringInstruction);
-                    break;
-                case RegisterInstruction registerInstruction:
-                    sb.AppendLine($" {registerInstruction.Value?.Name ?? "this"}");
-                    break;
-                case TypeInstruction typeInstruction:
-                    sb.AppendLine($" {typeInstruction.Value}");
-                    break;
-                case FieldInstruction fieldInstruction:
-                    sb.AppendLine($" {fieldInstruction.Value}");
-                    break;
-                case MethodInstruction methodInstruction:
-                    sb.AppendLine($" {methodInstruction.Value}");
-                    break;
-                case TypePairInstruction typePairInstruction:
-                    sb.AppendLine($" {typePairInstruction.FirstType}; {typePairInstruction.SecondType}");
-                    break;
-                case JumpInstruction jumpInstruction:
-                    sb.AppendLine($" {labels[jumpInstruction.Target]}");
-                    break;
-                case SwitchInstruction switchInstruction:
+
+                if (instruction.OpCode == OperationType.CatchEnd && catchStack.Count > 0)
                 {
-                    DumpSwitchInstruction(sb, switchInstruction, padding, labels);
-                    break;
+
+                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    var (type, value) = catchStack.Pop();
+                    Indent(disassemblyBuilder);
+                    disassemblyBuilder.AppendLine($"}} /* {value} catch {type} */");
+                    continue;
                 }
-                default:
-                    sb.AppendLine();
-                    break;
             }
-
-            switch (instruction.OpCode)
-            {
-                case OperationType.CatchEnd when catchStack.Count > 0:
-                {
-                    var (block, type) = catchStack.Pop();
-                    for (var i = 0; i < padding; i++)
-                    {
-                        sb.Append(' ');
-                    }
-
-                    sb.AppendLine($"/* end try-block {block} catch {type} */");
-                    break;
-                }
-                case OperationType.CatchEnd:
-                    sb.AppendLine("/* unknown catch block end??? corrupted error table or bad code? */");
-                    break;
-                case OperationType.FinallyEnd when finallyStack.Count > 0:
-                {
-                    var block = finallyStack.Pop();
-                    for (var i = 0; i < padding; i++)
-                    {
-                        sb.Append(' ');
-                    }
-                    sb.AppendLine($"/* end try-block {block} finally */");
-                    break;
-                }
-                case OperationType.FinallyEnd:
-                    sb.AppendLine("/* unknown finally block end??? corrupted error table or bad code? */");
-                    break;
-                default:
-                    break;
-            }
-
             if (addDecompilationGuesses)
             {
-                var consumed = decompilationBuilder!.Consume(instruction, sb.ToString(), padding, isVoid, labels);
+                var consumed = decompilationBuilder!.Consume(instruction, sb.ToString(), padding * (1 + Math.Max(tryIndentation + catchStack.Count + finallyStack.Count,0)), isVoid, labels);
                 if (consumed is not null) disassemblyBuilder.Append(consumed);
             }
             else
@@ -191,19 +164,93 @@ public class DisassemblyBuilder
                 disassemblyBuilder.Append(sb);
             }
         }
-
         if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
         return disassemblyBuilder.ToString();
-    }
-
-    public string DisassembleRange(Instruction? begin, Instruction? end = null, bool addDecompilationGuesses = false)
-    {
-        throw new NotImplementedException();
+        void Indent(StringBuilder sb, string label="")
+        {
+            sb.Append(new string(' ', padding * (tryIndentation + catchStack.Count + finallyStack.Count)));
+            if (!addLabels) return;
+            if (label != "")
+            {
+                sb.Append($"{label}:");
+                sb.Append(new string(' ', padding - (label.Length + 1)));
+            }
+            else
+            {
+                sb.Append(new string(' ', padding));
+            }
+        }
     }
 
     public string DisassembleSingle(Instruction instruction, bool addLabels = false)
     {
-        throw new NotImplementedException();
+        var labels = addLabels ? Labels : null;
+        var padding = (labels?.Count ?? 0) > 0 ? labels!.Values.Select(x => x.Length).Max() + 2 : 4;
+        var sb = new StringBuilder();
+        
+        if (addLabels & labels!.TryGetValue(instruction, out var label))
+        {
+            Indent(label!);
+        }
+        else
+        {
+            Indent();
+        }
+        
+        sb.Append($"{Operations.Operations.OperationsByType[instruction.OpCode].Name}");
+        switch (instruction)
+        {
+            case IntegerInstruction integerInstruction:
+            {
+                sb.Append(DumpIntegerInstruction(integerInstruction, instruction));
+                break;
+            }
+            case FloatInstruction floatInstruction:
+                sb.Append($" {floatInstruction.Value}");
+                break;
+            case StringInstruction stringInstruction:
+                sb.Append(DumpStringInstruction(instruction, stringInstruction));
+                break;
+            case RegisterInstruction registerInstruction:
+                sb.Append($" {registerInstruction.Value?.Name ?? "this"}");
+                break;
+            case TypeInstruction typeInstruction:
+                sb.Append($" {typeInstruction.Value}");
+                break;
+            case FieldInstruction fieldInstruction:
+                sb.Append($" {fieldInstruction.Value}");
+                break;
+            case MethodInstruction methodInstruction:
+                sb.Append($" {methodInstruction.Value}");
+                break;
+            case TypePairInstruction typePairInstruction:
+                sb.Append($" {typePairInstruction.FirstType}; {typePairInstruction.SecondType}");
+                break;
+            case JumpInstruction jumpInstruction:
+                sb.Append($" {labels[jumpInstruction.Target]}");
+                break;
+            case SwitchInstruction switchInstruction:
+            {
+                sb.Append(DumpSwitchInstruction(switchInstruction, padding));
+                break;
+            }
+        }
+
+        return sb.ToString();
+        
+        void Indent(string label="")
+        {
+            sb.Append(new string(' ', padding));
+            if (label != "")
+            {
+                sb.Append($"{label}:");
+                sb.Append(new string(' ', padding - (label.Length + 1)));
+            }
+            else
+            {
+                sb.Append(new string(' ', padding));
+            }
+        }
     }
     
     private Dictionary<Instruction, string> ConstructLabels()
@@ -289,9 +336,9 @@ public class DisassemblyBuilder
         return (starts, ends, handlers, finallies);
     }
     
-    private static void DumpSwitchInstruction(StringBuilder sb, SwitchInstruction switchInstruction, int padding,
-        Dictionary<Instruction, string> labels)
+    private StringBuilder DumpSwitchInstruction(SwitchInstruction switchInstruction, int padding)
     {
+        var sb = new StringBuilder();
         sb.AppendLine(" {");
         for (var i = 0; i < switchInstruction.JumpTargets.Count; i++)
         {
@@ -301,37 +348,42 @@ public class DisassemblyBuilder
             }
 
             sb.Append("    ");
-            sb.AppendLine($"{i} -> {labels[switchInstruction.JumpTargets[i]]}");
+            sb.AppendLine($"{i} -> {Labels[switchInstruction.JumpTargets[i]]}");
         }
         for (var i = 0; i < padding; i++)
         {
             sb.Append(' ');
         }
-        sb.AppendLine("}");
+        sb.Append('}');
+        return sb;
     }
 
-    private static void DumpStringInstruction(Instruction instruction, StringBuilder sb,
+    private static StringBuilder DumpStringInstruction(Instruction instruction,
         StringInstruction stringInstruction)
     {
+        var sb = new StringBuilder();
         switch (instruction.OpCode)
         {
             case OperationType.LoadStr or OperationType.LoadUri:
-                sb.AppendLine($" {HttpUtility.JavaScriptStringEncode(stringInstruction.Value,true)}");
+                sb.Append($" {HttpUtility.JavaScriptStringEncode(stringInstruction.Value, true)}");
                 break;
             case OperationType.LoadDecimal:
-                sb.AppendLine($" {stringInstruction.Value}");
+                sb.Append($" {stringInstruction.Value}");
                 break;
         }
+
+        return sb;
     }
 
-    private static void DumpIntegerInstruction(StringBuilder sb, IntegerInstruction integerInstruction,
+    private static StringBuilder DumpIntegerInstruction(IntegerInstruction integerInstruction,
         Instruction instruction)
     {
+        var sb = new StringBuilder();
         sb.Append($" {integerInstruction.Value}");
         if (instruction.OpCode is OperationType.LoadDuration)
         {
             sb.Append(" ticks");
         }
-        sb.AppendLine();
+        return sb;
     }
 }
