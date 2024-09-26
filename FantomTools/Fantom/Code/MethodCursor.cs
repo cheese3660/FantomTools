@@ -17,7 +17,7 @@ public class MethodCursor(MethodBody body)
     /// <summary>
     /// The current instruction of the cursor
     /// </summary>
-    public Instruction Current => body.Instructions[Index];
+    public Instruction? Current => Index < body.Instructions.Count ? body.Instructions[Index] : null;
     /// <summary>
     /// The method body this cursor is attached to
     /// </summary>
@@ -33,7 +33,7 @@ public class MethodCursor(MethodBody body)
     /// <exception cref="Exception">Thrown if there is no instruction found that matches the predicate</exception>
     public void Seek(Func<Instruction, bool> predicate, SeekMode mode = SeekMode.Before, SeekDirection direction = SeekDirection.Forwards)
     {
-        while (!predicate(Current))
+        while (Current is not null && !predicate(Current))
         {
             if (direction == SeekDirection.Backwards)
             {
@@ -94,9 +94,9 @@ public class MethodCursor(MethodBody body)
     /// <summary>
     /// Remove the current instruction
     /// </summary>
-    /// <param name="jumpRetargetMode">Choose what to do if an instruction jumps to this instruction, should it error, or should it be retargeted to the next instruction</param>
-    /// <exception cref="Exception">Thrown if an instruction jumps to the current instruction, and jumpRetargetMode = Error</exception>
-    public void Remove(RetargetMode jumpRetargetMode = RetargetMode.Error)
+    /// <param name="jumpRemovalRetargetMode">Choose what to do if an instruction jumps to this instruction, should it error, or should it be retargeted to the next instruction</param>
+    /// <exception cref="Exception">Thrown if an instruction jumps to the current instruction, and jumpRemovalRetargetMode = Error</exception>
+    public void Remove(RemovalRetargetMode jumpRemovalRetargetMode = RemovalRetargetMode.Error)
     {
         foreach (var instruction in body.Instructions.Where(instruction => instruction != Current))
         {
@@ -104,7 +104,7 @@ public class MethodCursor(MethodBody body)
             {
                 case JumpInstruction jumpInstruction when jumpInstruction.Target == Current:
                 {
-                    if (jumpRetargetMode == RetargetMode.Error)
+                    if (jumpRemovalRetargetMode == RemovalRetargetMode.Error)
                         throw new Exception("Removing instruction will retarget jump!");
                     jumpInstruction.Target = body.Instructions[Index+1];
                     break;
@@ -114,11 +114,10 @@ public class MethodCursor(MethodBody body)
                     for (var i = 0; i < switchInstruction.JumpTargets.Count; i++)
                     {
                         if (switchInstruction.JumpTargets[i] != Current) continue;
-                        if (jumpRetargetMode == RetargetMode.Error)
+                        if (jumpRemovalRetargetMode == RemovalRetargetMode.Error)
                             throw new Exception("Removing instruction will retarget jump!");
                         switchInstruction.JumpTargets[i] = body.Instructions[Index + 1];
                     }
-
                     break;
                 }
             }
@@ -127,26 +126,26 @@ public class MethodCursor(MethodBody body)
         {
             if (tryCatch.Start == Current)
             {
-                if (jumpRetargetMode == RetargetMode.Error)
+                if (jumpRemovalRetargetMode == RemovalRetargetMode.Error)
                     throw new Exception("Removing instruction will retarget jump!");
                 tryCatch.Start = body.Instructions[Index + 1];
             }
             if (tryCatch.End == Current)
             {
-                if (jumpRetargetMode == RetargetMode.Error)
+                if (jumpRemovalRetargetMode == RemovalRetargetMode.Error)
                     throw new Exception("Removing instruction will retarget jump!");
                 tryCatch.End = body.Instructions[Index + 1];
             }
             if (tryCatch.Finally == Current)
             {
-                if (jumpRetargetMode == RetargetMode.Error)
+                if (jumpRemovalRetargetMode == RemovalRetargetMode.Error)
                     throw new Exception("Removing instruction will retarget jump!");
                 tryCatch.Finally = body.Instructions[Index + 1];
             }
             foreach (var (ty, handler) in tryCatch.ErrorHandlers)
             {
                 if (handler != Current) continue;
-                if (jumpRetargetMode == RetargetMode.Error)
+                if (jumpRemovalRetargetMode == RemovalRetargetMode.Error)
                     throw new Exception("Removing instruction will retarget jump!");
                 tryCatch.ErrorHandlers[ty] = body.Instructions[Index+1];
             }
@@ -158,9 +157,44 @@ public class MethodCursor(MethodBody body)
     /// Insert an instruction at the current position
     /// </summary>
     /// <param name="instruction">The instruction to insert</param>
-    /// <param name="advanceCursor">Should the cursor advance to point after the instruction just inserted</param>
-    public void Insert(Instruction instruction, bool advanceCursor = true)
+    /// <param name="advanceCursor">Should the cursor advance to point after the instruction just inserted?</param>
+    /// <param name="retargetMode">How should jumps to the current instruction be treated</param>
+    public void Insert(Instruction instruction, bool advanceCursor = true, InsertionRetargetMode retargetMode=InsertionRetargetMode.KeepCurrentTarget)
     {
+        if (retargetMode == InsertionRetargetMode.ReplaceWithInserted)
+        {
+            foreach (var inst in body.Instructions)
+            {
+                switch (inst)
+                {
+                    case JumpInstruction jumpInstruction when jumpInstruction.Target == Current:
+                        jumpInstruction.Target = instruction;
+                        break;
+                    case SwitchInstruction switchInstruction:
+                    {
+                        for (var i = 0; i < switchInstruction.JumpTargets.Count; i++)
+                        {
+                            if (switchInstruction.JumpTargets[i] == Current)
+                            {
+                                switchInstruction.JumpTargets[i] = instruction;
+                            }
+                        }
+
+                        break;
+                    }
+                }
+            }
+            foreach (var tryCatch in Body.ErrorTable.TryBlocks)
+            {
+                if (tryCatch.Start == Current) tryCatch.Start = instruction;
+                if (tryCatch.End == Current) tryCatch.End = instruction;
+                if (tryCatch.Finally == Current) tryCatch.End = instruction;
+                foreach (var (ty, handler) in tryCatch.ErrorHandlers)
+                {
+                    if (handler == Current) tryCatch.ErrorHandlers[ty] = instruction;
+                }
+            }
+        }
         body.Instructions.Insert(Index, instruction);
         if (advanceCursor)
         {
@@ -172,11 +206,14 @@ public class MethodCursor(MethodBody body)
     /// Insert a range of instructions at the current position, advancing the cursor
     /// </summary>
     /// <param name="instructions">The instructions to add</param>
-    public void Insert(IEnumerable<Instruction> instructions)
+    /// <param name="retargetMode">How should jumps to the current instruction be treated</param>
+    public void Insert(IEnumerable<Instruction> instructions, InsertionRetargetMode retargetMode=InsertionRetargetMode.KeepCurrentTarget)
     {
+        var first = true;
         foreach (var instruction in instructions)
         {
-            Insert(instruction);
+            Insert(instruction, true, first ? retargetMode : InsertionRetargetMode.KeepCurrentTarget);
+            first = false;
         }
     }
 
@@ -206,9 +243,10 @@ public class MethodCursor(MethodBody body)
     }
 
     /// <summary>
-    /// Represents the behaviour of what to do when a jump needs to be retarged
+    /// Represents the behaviour of what to do when a jump needs to be retargeted during removal
     /// </summary>
-    public enum RetargetMode
+    [PublicAPI]
+    public enum RemovalRetargetMode
     {
         /// <summary>
         /// Throw an error on retarget
@@ -218,6 +256,16 @@ public class MethodCursor(MethodBody body)
         /// Retarget the jump to the next instruction
         /// </summary>
         After
+    }
+
+    /// <summary>
+    /// Represents the behaviour of what to do when a jump needs to be retargeted during insertion
+    /// </summary>
+    [PublicAPI]
+    public enum InsertionRetargetMode
+    {
+        KeepCurrentTarget,
+        ReplaceWithInserted
     }
     
     /// <summary>
