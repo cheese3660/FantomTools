@@ -171,6 +171,7 @@ foreach (var type in pod.Types.Where(type => types.Contains(type.Name)))
 Console.WriteLine(System.Environment.CurrentDirectory);
 Console.WriteLine(args[1]);
 File.WriteAllText(args[1], sb.ToString());
+return;
 
 string Indent(string baseIndent, int depth)
 {
