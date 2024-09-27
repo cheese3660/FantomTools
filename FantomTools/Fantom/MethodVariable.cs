@@ -24,10 +24,6 @@ public class MethodVariable
     /// Is this variable a parameter?
     /// </summary>
     public readonly bool IsParameter;
-
-    internal bool IsDuplicate;
-    
-
     
     /// <summary>
     /// The attributes on this variable

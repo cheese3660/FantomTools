@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using FantomTools.Fantom.Attributes;
 using FantomTools.Fantom.Code;
+using FantomTools.Fantom.Code.AssemblyTools;
 using FantomTools.PodWriting;
 using FantomTools.Utilities;
 using JetBrains.Annotations;
@@ -252,7 +253,7 @@ public class Method
         sb.AppendLine($"    .maxstack {MaxStack}");
         foreach (var local in Locals)
         {
-            sb.AppendLine($"    .local {local.Type} {local.Name}");
+            sb.AppendLine($"    .local {local.Name}, {local.Type}");
         }
         sb.AppendLine("]\n{");
 
@@ -293,5 +294,19 @@ public class Method
         {
             attribute.Write(writer, tables);
         }
+    }
+
+    public void AssembleFrom(string assembly)
+    {
+        
+        var (insts, locals, tries) = new MethodAssembler(Body.Method).Assemble(assembly);
+        _variables.RemoveAll(x => !x.IsParameter);
+        Body.ErrorTable.TryBlocks = tries;
+        foreach (var local in locals)
+        {
+            local.Index = (ushort)_variables.Count;
+            _variables.Add(local);
+        }
+        Body.Instructions = insts;
     }
 }

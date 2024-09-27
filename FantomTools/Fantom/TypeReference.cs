@@ -34,21 +34,24 @@ public abstract class TypeReference : IEquatable<TypeReference>
     /// <returns>The parsed TypeReference</returns>
     public static TypeReference Parse(string typeString)
     {
-        return new TypeParser(typeString).Parse();
+        var parser = new TypeParser(typeString); //.Parse();
+        var result = parser.Parse();
+        if (!parser.End) throw new Exception($"Invalid type reference {typeString}");
+        return result;
     }
 
-    private class TypeParser(string typeName)
+    internal class TypeParser(string typeName)
     {
         private int _index = 0;
-        private bool End => _index >= typeName.Length;
-        private char Peek => End ? '\0' : typeName[_index];
-        private void Consume()
+        internal bool End => _index >= typeName.Length;
+        internal char Peek => End ? '\0' : typeName[_index];
+        internal void Consume()
         {
             //Console.WriteLine($"Consuming {Peek} from {new StackFrame(1, true).GetMethod().Name}()");
             _index += 1;
         }
 
-        private bool NextIs(string toCheck)
+        internal bool NextIs(string toCheck)
         {
             return !End && typeName[_index..].StartsWith(toCheck);
         }

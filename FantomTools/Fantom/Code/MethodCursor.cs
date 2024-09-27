@@ -1,4 +1,5 @@
-﻿using FantomTools.Fantom.Code.Instructions;
+﻿using FantomTools.Fantom.Code.AssemblyTools;
+using FantomTools.Fantom.Code.Instructions;
 using JetBrains.Annotations;
 
 namespace FantomTools.Fantom.Code;
@@ -217,6 +218,24 @@ public class MethodCursor(MethodBody body)
         }
     }
 
+    /// <summary>
+    /// Insert assembly at the current position, advancing the cursor
+    /// </summary>
+    /// <param name="assembly">The assembly to add</param>
+    /// <param name="retargetMode">How should jumps to the current instruction be treated</param>
+    public void InsertAssembly(string assembly, InsertionRetargetMode retargetMode=InsertionRetargetMode.KeepCurrentTarget)
+    {
+        var (insts, locals, tries) = new MethodAssembler(Body.Method, true).Assemble(assembly, Current);
+        foreach (var local in locals)
+        {
+            local.Index = (ushort)body.Method.Variables.Count;
+            ((List<MethodVariable>)body.Method.Variables).Add(local);
+        }
+
+        body.ErrorTable.TryBlocks.AddRange(tries);
+        Insert(insts, retargetMode);
+    }
+    
     /// <summary>
     /// Advance the cursor
     /// </summary>

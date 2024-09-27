@@ -99,7 +99,7 @@ public class CodeWriter(PodReader podReader, FantomBuffer CodeBuffer, FMethod me
                         line.Append($" {HttpUtility.JavaScriptStringEncode(podReader.Strings[_reader!.ReadU16()], true)}");
                         _currentAddress += 2;
                         break;
-                    case OperationSignature.Duration:
+                    case OperationSignature.DurationExtensions:
                         throw new NotImplementedException();
                         break;
                     case OperationSignature.Type:

@@ -2,6 +2,7 @@
 using System.Web;
 using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
+using FantomTools.Utilities;
 using JetBrains.Annotations;
 
 namespace FantomTools.Fantom.Code.DisassemblyTools;
@@ -92,12 +93,12 @@ public class DisassemblyBuilder
                             Body.Instructions[nextIndex].OpCode == OperationType.StoreVar)
                         {
                             var name = (Body.Instructions[nextIndex] as RegisterInstruction)?.Value?.Name ?? "this";
-                            disassemblyBuilder.AppendLine($"catch ({c.typeName} {name}) /* {c.blockName} */ {{");
+                            disassemblyBuilder.AppendLine($"catch ({name}, {c.typeName}) /* {c.blockName} */ {{");
                             shouldSkipNextInstruction = true;
                         }
                         else
                         {
-                            disassemblyBuilder.AppendLine($"catch ({c.typeName} <unknown>) /* {c.blockName} */ {{");
+                            disassemblyBuilder.AppendLine($"catch (<unknown>, {c.typeName}) /* {c.blockName} */ {{");
                         }
                     }
                     else
@@ -132,7 +133,7 @@ public class DisassemblyBuilder
             {
                 Indent(sb);
             }
-            sb.Append(DisassembleSingle(instruction));
+            sb.AppendLine(DisassembleSingle(instruction));
             if (addTryCatches)
             {
                 if (instruction.OpCode == OperationType.FinallyEnd && finallyStack.Count > 0)
@@ -182,17 +183,20 @@ public class DisassemblyBuilder
         }
     }
 
-    public string DisassembleSingle(Instruction instruction, bool addLabels = false)
+    public string DisassembleSingle(Instruction instruction, bool addLabels = false, int paddingOverride = -1)
     {
-        var labels = addLabels ? Labels : null;
-        var padding = (labels?.Count ?? 0) > 0 ? labels!.Values.Select(x => x.Length).Max() + 2 : 4;
+        var padding = addLabels ? (Labels?.Count ?? 0) > 0 ? Labels!.Values.Select(x => x.Length).Max() + 2 : 4 : 0;
+        if (paddingOverride > -1)
+        {
+            padding = paddingOverride;
+        }
         var sb = new StringBuilder();
         
-        if (addLabels & labels!.TryGetValue(instruction, out var label))
+        if (addLabels && Labels!.TryGetValue(instruction, out var label))
         {
-            Indent(label!);
+            Indent(label);
         }
-        else
+        else if (addLabels)
         {
             Indent();
         }
@@ -202,14 +206,14 @@ public class DisassemblyBuilder
         {
             case IntegerInstruction integerInstruction:
             {
-                sb.Append(DumpIntegerInstruction(integerInstruction, instruction));
+                sb.Append(DumpIntegerInstruction(integerInstruction));
                 break;
             }
             case FloatInstruction floatInstruction:
                 sb.Append($" {floatInstruction.Value}");
                 break;
             case StringInstruction stringInstruction:
-                sb.Append(DumpStringInstruction(instruction, stringInstruction));
+                sb.Append(DumpStringInstruction(stringInstruction));
                 break;
             case RegisterInstruction registerInstruction:
                 sb.Append($" {registerInstruction.Value?.Name ?? "this"}");
@@ -227,7 +231,7 @@ public class DisassemblyBuilder
                 sb.Append($" {typePairInstruction.FirstType}; {typePairInstruction.SecondType}");
                 break;
             case JumpInstruction jumpInstruction:
-                sb.Append($" {labels[jumpInstruction.Target]}");
+                sb.Append($" {Labels![jumpInstruction.Target]}");
                 break;
             case SwitchInstruction switchInstruction:
             {
@@ -238,13 +242,13 @@ public class DisassemblyBuilder
 
         return sb.ToString();
         
-        void Indent(string label="")
+        void Indent(string lab="")
         {
             sb.Append(new string(' ', padding));
-            if (label != "")
+            if (lab != "")
             {
-                sb.Append($"{label}:");
-                sb.Append(new string(' ', padding - (label.Length + 1)));
+                sb.Append($"{lab}:");
+                sb.Append(new string(' ', padding - (lab.Length + 1)));
             }
             else
             {
@@ -358,14 +362,13 @@ public class DisassemblyBuilder
         return sb;
     }
 
-    private static StringBuilder DumpStringInstruction(Instruction instruction,
-        StringInstruction stringInstruction)
+    private static StringBuilder DumpStringInstruction(StringInstruction stringInstruction)
     {
         var sb = new StringBuilder();
-        switch (instruction.OpCode)
+        switch (stringInstruction.OpCode)
         {
             case OperationType.LoadStr or OperationType.LoadUri:
-                sb.Append($" {HttpUtility.JavaScriptStringEncode(stringInstruction.Value, true)}");
+                sb.Append($" \"{stringInstruction.Value.Escape()}\"");
                 break;
             case OperationType.LoadDecimal:
                 sb.Append($" {stringInstruction.Value}");
@@ -375,14 +378,16 @@ public class DisassemblyBuilder
         return sb;
     }
 
-    private static StringBuilder DumpIntegerInstruction(IntegerInstruction integerInstruction,
-        Instruction instruction)
+    private static StringBuilder DumpIntegerInstruction(IntegerInstruction integerInstruction)
     {
         var sb = new StringBuilder();
-        sb.Append($" {integerInstruction.Value}");
-        if (instruction.OpCode is OperationType.LoadDuration)
+        if (integerInstruction.OpCode is OperationType.LoadDuration)
         {
-            sb.Append(" ticks");
+            sb.Append($" {integerInstruction.Value.ToDurationString()}");
+        }
+        else
+        {
+            sb.Append($" {integerInstruction.Value}");
         }
         return sb;
     }

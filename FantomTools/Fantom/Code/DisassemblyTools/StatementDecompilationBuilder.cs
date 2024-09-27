@@ -2,6 +2,7 @@
 using System.Web;
 using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
+using FantomTools.Utilities;
 
 namespace FantomTools.Fantom.Code.DisassemblyTools;
 
@@ -100,6 +101,12 @@ internal class StatementDecompilationBuilder
             case NullSafetyState.JustDuplicated when instruction.OpCode == OperationType.CompareNull:
                 _nullSafety = NullSafetyState.JustCompared;
                 return null;
+            case NullSafetyState.JustDuplicated:
+                // If we don't have a compare null, then we just duplicate the previous state and proceed as normal
+                // Console.WriteLine("Just duplicated but nothing else");
+                _decompiledStatements.Push(_decompiledStatements.Peek());
+                _nullSafety = NullSafetyState.NoSafety;
+                goto case NullSafetyState.NoSafety;
             case NullSafetyState.JustCompared when instruction.OpCode == OperationType.JumpTrue:
                 _nullSafety = NullSafetyState.JustJumped;
                 _lastNullSafetyJump = jumpInst!.Target;
@@ -153,7 +160,7 @@ internal class StatementDecompilationBuilder
                         _decompiledStatements.Push($"`{HttpUtility.JavaScriptStringEncode(strInst!.Value)}`");
                         return null;
                     case OperationType.LoadDuration:
-                        _decompiledStatements.Push($"{intInst!.Value}ns");
+                        _decompiledStatements.Push(intInst!.Value.ToDurationString());
                         return null;
                     case OperationType.LoadType:
                         _decompiledStatements.Push($"{typeInst!.Value}#");
