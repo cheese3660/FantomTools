@@ -108,13 +108,6 @@ public class DisassemblyBuilder
 
             if (addTryCatches)
             {
-                if (TryEnds.TryGetValue(instruction, out var tryEnd))
-                {
-                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
-                    tryIndentation -= 1;
-                    Indent(disassemblyBuilder);
-                    disassemblyBuilder.AppendLine($"}} /* {tryEnd} */");
-                }
                 if (TryStarts.TryGetValue(instruction, out var tryStartList))
                 {
                     if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
@@ -196,6 +189,15 @@ public class DisassemblyBuilder
                     var (type, value) = catchStack.Pop();
                     Indent(disassemblyBuilder);
                     disassemblyBuilder.AppendLine($"}} /* {value} catch {type} */");
+                    continue;
+                }
+                if (TryEnds.TryGetValue(instruction, out var tryEnd))
+                {
+                    var consumed = decompilationBuilder!.Consume(instruction, sb.ToString(), padding * (1 + Math.Max(tryIndentation + catchStack.Count + finallyStack.Count,0)), isVoid, Labels);
+                    disassemblyBuilder.Append(consumed ?? decompilationBuilder.EndStatement());
+                    tryIndentation -= 1;
+                    Indent(disassemblyBuilder);
+                    disassemblyBuilder.AppendLine($"}} /* {tryEnd} */");
                     continue;
                 }
             }

@@ -148,7 +148,7 @@ internal class MethodAssembler
                 switch (lastBlock.bt)
                 {
                     case BlockType.Try:
-                        _onNextAppend.Add(x => lastBlock.attachedBlock.End = x);
+                        lastBlock.attachedBlock.End = _instructions.Last();
                         break;
                     case BlockType.Catch:
                         AddInstruction(new Instruction {OpCode = OperationType.CatchEnd});
