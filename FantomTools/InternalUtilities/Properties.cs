@@ -2,7 +2,7 @@
 
 namespace FantomTools.InternalUtilities;
 
-public class Properties
+internal class Properties
 {
     private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
     public Dictionary<string, string> Props = new();

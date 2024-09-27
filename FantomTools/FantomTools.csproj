@@ -4,6 +4,14 @@
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <Version>0.1.0</Version>
+        <Authors>Lexi Allen</Authors>
+        <Description>Provides tools for reading, modifying, and creating fantom pods, as well as getting basic decompilation information from them</Description>
+        <PackageProjectUrl>https://github.com/cheese3660/FantomTools</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/cheese3660/FantomTools/blob/main/LICENSE.md</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/cheese3660/FantomTools</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

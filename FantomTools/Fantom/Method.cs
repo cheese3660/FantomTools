@@ -29,7 +29,7 @@ public class Method
     public string Name;
 
     /// <summary>
-    /// All the variables in this method (parameters & locals)
+    /// All the variables in this method (parameters &amp; locals)
     /// </summary>
     public IReadOnlyList<MethodVariable> Variables => _variables;
     private List<MethodVariable> _variables = [];

@@ -4,7 +4,7 @@ namespace FantomTools.InternalUtilities;
 
 internal class FantomBufferStream(Stream baseStream) : BigEndianWriter(new MemoryStream(), false), IDisposable, IAsyncDisposable
 {
-    public void Dispose()
+    public new void Dispose()
     {
         var baseStreamWriter = new BigEndianWriter(baseStream);
         Stream.Seek(0, SeekOrigin.Begin);
@@ -13,7 +13,7 @@ internal class FantomBufferStream(Stream baseStream) : BigEndianWriter(new Memor
         base.Dispose();
     }
 
-    public async ValueTask DisposeAsync()
+    public new async ValueTask DisposeAsync()
     {
         var baseStreamWriter = new BigEndianWriter(baseStream);
         Stream.Seek(0, SeekOrigin.Begin);

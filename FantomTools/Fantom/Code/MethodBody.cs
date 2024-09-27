@@ -332,7 +332,7 @@ public class MethodBody(Method method)
                     });
                     break;
                 case RegisterInstruction registerInstruction:
-                    if (method.IsStatic) bodyWriter.WriteU16(registerInstruction.Value.Index);
+                    if (method.IsStatic) bodyWriter.WriteU16(registerInstruction.Value!.Index);
                     else if (registerInstruction.Value is not null) bodyWriter.WriteU16((ushort)(registerInstruction.Value.Index + 1));
                     else bodyWriter.WriteU16(0);
                     break;
