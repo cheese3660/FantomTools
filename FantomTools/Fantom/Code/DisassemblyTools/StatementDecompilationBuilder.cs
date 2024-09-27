@@ -42,6 +42,7 @@ internal class StatementDecompilationBuilder
     private bool _lastCallWasVoid;
     private int _nullPropagationCount = 0;
     private readonly Stack<Instruction> _elvisTargets = [];
+    private string _lastCall = "";
 
     private enum NullSafetyState
     {
@@ -88,7 +89,7 @@ internal class StatementDecompilationBuilder
                 if (_lastCallWasVoid)
                 {
                     _nullSafety = NullSafetyState.NoSafety;
-                    return null;
+                    return GenerateDisassemblyComment(_lastCall, decompilationPadding);
                 }
                 _nullSafety = NullSafetyState.ExpectPushNull;
                 return null;
@@ -198,6 +199,7 @@ internal class StatementDecompilationBuilder
                         if (methodInst.Value.ReturnType == TypeReference.Void)
                         {
                             _lastCallWasVoid = true;
+                            _lastCall = statement;
                             switch (_nullPropagationCount)
                             {
                                 case 0:
@@ -395,5 +397,5 @@ internal class StatementDecompilationBuilder
     }
 
     // Used to terminate a statement in case of something like the end of a block or something
-    public string EndStatement() => _statementBuilder.ToString();
+    public string EndStatement() => UnknownDisassembly;
 }
