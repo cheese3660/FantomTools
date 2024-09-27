@@ -49,7 +49,7 @@ internal class FantomTables
     {
         if (table.Empty) return;
         using var stream = archive.CreateEntry(path).Open();
-        var writer = new FantomStreamWriter(stream);
+        var writer = new BigEndianWriter(stream);
         table.WriteToStream(writer);
     }
 }

@@ -1,17 +1,22 @@
-﻿using FantomTools.PodWriting;
+﻿using FantomTools.InternalUtilities;
+using FantomTools.PodWriting;
 using FantomTools.Utilities;
 using JetBrains.Annotations;
 
 namespace FantomTools.Fantom.Attributes;
 
+/// <summary>
+/// The base class for a fantom attribute
+/// </summary>
+/// <param name="name">The name of the attribute</param>
 [PublicAPI]
-public class FantomAttribute(string name)
+public abstract class FantomAttribute(string name)
 {
+    /// <summary>
+    /// The name of the attribute
+    /// </summary>
     public string Name => name;
-    internal FantomBuffer? Buffer;
-    public byte[]? Bytes => Buffer?.Buffer;
-
-
+    
     internal static FantomAttribute Parse(FantomStreamReader reader)
     {
         var name = reader.ReadName();
@@ -29,28 +34,19 @@ public class FantomAttribute(string name)
                 reader.ReadU16();
                 return new ErrorTableAttribute(reader);
             default:
-                return new FantomAttribute(name)
+                return new BufferedAttribute(name)
                 {
-                    Buffer = FantomBuffer.Read(reader)
+                    Bytes = FantomBuffer.Read(reader)?.Buffer ?? []
                 };
         }
     }
 
 
-    internal void Write(FantomStreamWriter writer, FantomTables tables)
+    internal void Write(BigEndianWriter writer, FantomTables tables)
     {
         writer.WriteU16(tables.Names.Intern(Name));
         WriteBody(writer, tables);
     }
-    internal virtual void WriteBody(FantomStreamWriter writer, FantomTables tables)
-    {
-        if (Buffer != null)
-        {
-            Buffer.WriteBuffer(writer);
-        }
-        else
-        {
-            writer.WriteU16(0);
-        }
-    }
+
+    internal abstract void WriteBody(BigEndianWriter writer, FantomTables tables);
 }

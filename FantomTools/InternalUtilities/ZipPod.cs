@@ -1,8 +1,7 @@
 ﻿using System.IO.Compression;
-using System.Net.Mail;
 using FantomTools.PodReading;
 
-namespace FantomTools.Utilities;
+namespace FantomTools.InternalUtilities;
 
 internal sealed class ZipPod(ZipArchive archive, PodReader podReader) : IDisposable
 {

@@ -1,7 +1,8 @@
 ﻿using System.Text;
+using FantomTools.Utilities;
 using Myitian.Text;
 
-namespace FantomTools.Utilities;
+namespace FantomTools.InternalUtilities;
 
 internal class FantomBuffer(byte[] buffer, ushort len)
 {
@@ -18,7 +19,7 @@ internal class FantomBuffer(byte[] buffer, ushort len)
         return new FantomBuffer(buffer, length);
     }
 
-    public void WriteBuffer(FantomStreamWriter writer)
+    public void WriteBuffer(BigEndianWriter writer)
     {
         writer.WriteU16(Length);
         writer.Stream.Write(Buffer);

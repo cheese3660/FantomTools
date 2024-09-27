@@ -3,27 +3,22 @@ using System.Text.Json.Serialization;
 using FantomTools.Fantom.Code.ErrorHandling;
 using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
+using FantomTools.InternalUtilities;
 using FantomTools.Utilities;
 
 namespace FantomTools.Fantom.Code.AssemblyTools;
 
-public class MethodAssembler
+
+internal class MethodAssembler
 {
-    public Func<string, MethodVariable?> VariableResolver;
+    private readonly Func<string, MethodVariable?> _variableResolver;
     
-    /// <summary>
-    /// Construct a method assembler for a method
-    /// </summary>
-    /// <param name="method">The method to assemble for</param>
-    /// <param name="allowLocals">Whether you will allow locals</param>
     public MethodAssembler(Method method, bool allowLocals=false)
     {
-        if (allowLocals) VariableResolver = s => method.Variables.FirstOrDefault(x => x.Name == s);
-        else VariableResolver = s => method.Parameters.FirstOrDefault(x => x.Name == s);
+        if (allowLocals) _variableResolver = s => method.Variables.FirstOrDefault(x => x.Name == s);
+        else _variableResolver = s => method.Parameters.FirstOrDefault(x => x.Name == s);
     }
-
     
-
     private Dictionary<string, List<Action<Instruction>>> _pendingJumps = [];
     private Dictionary<string, Instruction> _labels = [];
     private List<Instruction> _instructions = [];
@@ -398,7 +393,7 @@ public class MethodAssembler
     
     private MethodVariable? ResolveVariableName(string name)
     {
-        return VariableResolver(name) ?? _newLocals.FirstOrDefault(x => x.Name == name);
+        return _variableResolver(name) ?? _newLocals.FirstOrDefault(x => x.Name == name);
     }
 
     private static bool BeginsWithLabel(string line)

@@ -1,9 +1,15 @@
 ﻿namespace FantomTools.Fantom.Code.Operations;
 
-public class Operations
+/// <summary>
+/// Contains information about the operations fantom supports
+/// </summary>
+public static class Operations
 {
-    public static Dictionary<OperationType, Operation> OperationsByType =
-    new(){
+    /// <summary>
+    /// This contains information about every operation given their opcode
+    /// </summary>
+    public static readonly IReadOnlyDictionary<OperationType, Operation> OperationsByType =
+    new Dictionary<OperationType, Operation>{
         [OperationType.Nop] = new()
         {
             Name = "nop",

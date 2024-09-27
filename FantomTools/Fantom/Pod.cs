@@ -1,4 +1,5 @@
 ﻿using System.IO.Compression;
+using FantomTools.InternalUtilities;
 using FantomTools.PodReading;
 using FantomTools.PodWriting;
 using FantomTools.Utilities;
@@ -200,7 +201,7 @@ public sealed class Pod : IDisposable
             tables.Types.Intern(type);
             var path = $"fcode/{type.Name}.fcode";
             using var typeStream = outArchive.CreateEntry(path).Open();
-            var writer = new FantomStreamWriter(typeStream);
+            var writer = new BigEndianWriter(typeStream);
             type.EmitBody(writer, tables);
         }
         // And after we've written every type

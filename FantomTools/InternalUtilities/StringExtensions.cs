@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace FantomTools.Utilities;
+namespace FantomTools.InternalUtilities;
 
 internal static class StringExtensions
 {

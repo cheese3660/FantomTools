@@ -1,7 +1,6 @@
 ﻿using System.Text;
-using Myitian.Text;
 
-namespace FantomTools.Utilities;
+namespace FantomTools.InternalUtilities;
 
 public class Properties
 {

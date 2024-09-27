@@ -5,7 +5,7 @@ namespace FantomTools.PodWriting;
 
 internal class MethodReferenceTable(FantomTables tables) : FantomTable<MethodReference>
 {
-    protected override void WriteSingle(FantomStreamWriter writer, MethodReference value)
+    protected override void WriteSingle(BigEndianWriter writer, MethodReference value)
     {
         writer.WriteU16(tables.TypeReferences.Intern(value.ParentType));
         writer.WriteU16(tables.Names.Intern(value.Name));

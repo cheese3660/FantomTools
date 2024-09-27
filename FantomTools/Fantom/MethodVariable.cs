@@ -34,7 +34,7 @@ public class MethodVariable
         IsParameter = isParameter;
     }
     
-    internal void Emit(FantomStreamWriter writer, FantomTables tables)
+    internal void Emit(BigEndianWriter writer, FantomTables tables)
     {
         writer.WriteU16(tables.Names.Intern(Name));
         writer.WriteU16(tables.TypeReferences.Intern(Type));

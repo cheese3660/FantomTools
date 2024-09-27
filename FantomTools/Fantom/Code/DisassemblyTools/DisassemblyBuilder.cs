@@ -2,23 +2,55 @@
 using System.Web;
 using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
+using FantomTools.InternalUtilities;
 using FantomTools.Utilities;
 using JetBrains.Annotations;
 
 namespace FantomTools.Fantom.Code.DisassemblyTools;
 
+/// <summary>
+/// This is a class providing tools for creating disassemblies of methods
+/// </summary>
 [PublicAPI]
 public class DisassemblyBuilder
 {
+    /// <summary>
+    /// The method body that this disassembly builder is attached to
+    /// </summary>
     public readonly MethodBody Body;
-    private Method Method => Body.Method;
+    
+    /// <summary>
+    /// The method that this disassembly builder is attached to
+    /// </summary>
+    public Method Method => Body.Method;
 
+    /// <summary>
+    /// This is a dictionary of Instruction to String of the labels that this disassembly builder generated
+    /// </summary>
     public readonly IReadOnlyDictionary<Instruction, string> Labels;
+    
+    /// <summary>
+    /// This is a dictionary of Instruction to List&lt;string&gt; denoting the starts of try blocks
+    /// </summary>
     public readonly IReadOnlyDictionary<Instruction, List<string>> TryStarts;
+    /// <summary>
+    /// This is dictionary of Instruction to String denoting the ends of try blocks
+    /// </summary>
     public readonly IReadOnlyDictionary<Instruction, string> TryEnds;
+    
+    /// <summary>
+    /// This is a dictionary of instruction to a tuple of string, string denoting the start of catches, what blocks they are in, and the type they catch
+    /// </summary>
     public readonly IReadOnlyDictionary<Instruction, (string blockName, string typeName)> CatchStarts;
+    /// <summary>
+    /// This is a dictionary of instruction to a string denoting the starts of finally blocks
+    /// </summary>
     public readonly IReadOnlyDictionary<Instruction, string> FinallyStarts;
     
+    /// <summary>
+    /// Create a disassembly builder from a method body
+    /// </summary>
+    /// <param name="body">The method body</param>
     public DisassemblyBuilder(MethodBody body)
     {
         Body = body;
@@ -31,22 +63,34 @@ public class DisassemblyBuilder
 
 
 
-    // Time to do a better decompilation tool
+    /// <summary>
+    /// Disassemble the entire method body
+    /// </summary>
+    /// <param name="addDecompilationGuesses">Should decompilation guesses be added as comments?</param>
+    /// <returns>A string disassembly of the method body</returns>
     public string DisassembleAll(bool addDecompilationGuesses = false) => DisassembleRange(null, null, true, true, true);
 
+    /// <summary>
+    /// Disassemble a range of instructions in a method body
+    /// </summary>
+    /// <param name="begin">The starting instruction, null to be the first instruction</param>
+    /// <param name="end">The ending instruction, null to be the last instruction</param>
+    /// <param name="addLabels">Should labels be added to the disassembly?</param>
+    /// <param name="addDecompilationGuesses">Should decompilation guesses be added to the disassembly?</param>
+    /// <param name="addTryCatches">Should try/catch/finally blocks be added to the disassembly?</param>
+    /// <returns>A string disassembly of the given range of instruction</returns>
+    /// <exception cref="ArgumentException">Thrown when either begin/end are not in the method body</exception>
     public string DisassembleRange(Instruction? begin, Instruction? end = null, bool addLabels = false, bool addDecompilationGuesses = false, bool addTryCatches=false)
     {
         var startIndex = begin is null ? 0 : Body.Instructions.IndexOf(begin);
         if (startIndex == -1) throw new ArgumentException("Instruction is not in body!", nameof(begin));
         var endIndex = end is null ? Body.Instructions.Count - 1 : Body.Instructions.IndexOf(end);
-        if (startIndex > endIndex) return "";
-        var labels = ConstructLabels();
-        var padding = addLabels ? labels.Count > 0 ? labels.Values.Select(x => x.Length).Max() + 2 : 4 : 4;
-        //var (tryStarts, tryEnds, catches, finallies) = addTryCatches ? GetErrorHandlingInformation() : (null,null,null,null);
+        if (startIndex > endIndex)
+            throw new ArgumentException("Instruction is not in body, or before start!", nameof(end));
+        var padding = addLabels ? Labels.Count > 0 ? Labels.Values.Select(x => x.Length).Max() + 2 : 4 : 4;
         var disassemblyBuilder = new StringBuilder();
-        StatementDecompilationBuilder? decompilationBuilder = addDecompilationGuesses ? new() : null;
+        StatementDecompilationBuilder? decompilationBuilder = addDecompilationGuesses ? new StatementDecompilationBuilder() : null;
         var isVoid = addDecompilationGuesses && Method.ReturnType == TypeReference.Void;
-        // So now we need to build up a list of handlers
         var tryIndentation = 0;
         var catchStack = new Stack<(string, string)>();
         var finallyStack = new Stack<string>();
@@ -111,7 +155,7 @@ public class DisassemblyBuilder
                 if (FinallyStarts.TryGetValue(instruction, out var f))
                 {
                     if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
-                    if (labels.TryGetValue(instruction, out var lab))
+                    if (Labels.TryGetValue(instruction, out var lab))
                     {
                         Indent(disassemblyBuilder, lab);
                     }
@@ -125,7 +169,7 @@ public class DisassemblyBuilder
                 }
             }
             var sb = new StringBuilder();
-            if (addLabels && labels.TryGetValue(instruction, out var label))
+            if (addLabels && Labels.TryGetValue(instruction, out var label))
             {
                 Indent(sb,label);
             }
@@ -157,7 +201,7 @@ public class DisassemblyBuilder
             }
             if (addDecompilationGuesses)
             {
-                var consumed = decompilationBuilder!.Consume(instruction, sb.ToString(), padding * (1 + Math.Max(tryIndentation + catchStack.Count + finallyStack.Count,0)), isVoid, labels);
+                var consumed = decompilationBuilder!.Consume(instruction, sb.ToString(), padding * (1 + Math.Max(tryIndentation + catchStack.Count + finallyStack.Count,0)), isVoid, Labels);
                 if (consumed is not null) disassemblyBuilder.Append(consumed);
             }
             else
@@ -183,16 +227,23 @@ public class DisassemblyBuilder
         }
     }
 
+    /// <summary>
+    /// Disassemble a single instruction in context of the method body
+    /// </summary>
+    /// <param name="instruction">The instruction to disassemble</param>
+    /// <param name="addLabels">Whether any labels on the instruction should be output</param>
+    /// <param name="paddingOverride">The override to the left padding amount</param>
+    /// <returns>A string disassembly of the single instruction</returns>
     public string DisassembleSingle(Instruction instruction, bool addLabels = false, int paddingOverride = -1)
     {
-        var padding = addLabels ? (Labels?.Count ?? 0) > 0 ? Labels!.Values.Select(x => x.Length).Max() + 2 : 4 : 0;
+        var padding = addLabels ? Labels.Count > 0 ? Labels.Values.Select(x => x.Length).Max() + 2 : 4 : 0;
         if (paddingOverride > -1)
         {
             padding = paddingOverride;
         }
         var sb = new StringBuilder();
         
-        if (addLabels && Labels!.TryGetValue(instruction, out var label))
+        if (addLabels && Labels.TryGetValue(instruction, out var label))
         {
             Indent(label);
         }
@@ -244,7 +295,6 @@ public class DisassemblyBuilder
         
         void Indent(string lab="")
         {
-            sb.Append(new string(' ', padding));
             if (lab != "")
             {
                 sb.Append($"{lab}:");
@@ -309,22 +359,36 @@ public class DisassemblyBuilder
     
     private (Dictionary<Instruction, List<string>> Starts, Dictionary<Instruction, string> Ends, Dictionary<Instruction, (string block, string type)> Handlers, Dictionary<Instruction, string> Finallies) GetErrorHandlingInformation()
     {
+        // We actually likely want to sort the try starts, so let's do that
+        var indices = Body.Instructions.ToDictionary(x => x, x => Body.Instructions.IndexOf(x));
         Dictionary<Instruction, List<string>> starts = [];
         Dictionary<Instruction, string> ends = [];
         Dictionary<Instruction, (string block,string type)> handlers = [];
-        Dictionary<Instruction, string> finallies = []; 
+        Dictionary<Instruction, string> finallies = [];
+        Dictionary<string, Instruction> previousEnds = [];
         var i = 0;
         foreach (var handler in Body.ErrorTable.TryBlocks)
         {
             if (starts.TryGetValue(handler.Start, out var startsList))
             {
-                startsList.Add($"T{i}");
+                // We need to sort this such that the ones that are wider are earlier in the list
+                // startsList.Add($"T{i}");
+                int index;
+                for (index = 0; index < startsList.Count; index++)
+                {
+                    if (indices[previousEnds[startsList[index]]] <= indices[handler.End])
+                    {
+                        break;
+                    }
+                }
+                startsList.Insert(index, $"T{i}");
             }
             else
             {
                 starts[handler.Start] = [$"T{i}"];
             }
             ends[handler.End] = $"T{i}";
+            previousEnds[$"T{i}"] = handler.End;
 
             foreach (var (type, inst) in handler.ErrorHandlers)
             {
@@ -333,7 +397,7 @@ public class DisassemblyBuilder
 
             if (handler.Finally is { } @finally)
             {
-                finallies[handler.Finally] = $"T{i}";
+                finallies[@finally] = $"T{i}";
             }
             i++;
         }

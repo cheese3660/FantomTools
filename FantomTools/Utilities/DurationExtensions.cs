@@ -43,6 +43,11 @@ public static class DurationExtensions
         return long.Parse(removedUnderscores) * multiplier;
     }
 
+    /// <summary>
+    /// Converts a long duration value into a duration string
+    /// </summary>
+    /// <param name="duration">The duration value</param>
+    /// <returns>The duration string</returns>
     public static string ToDurationString(this long duration)
     {
         if (duration % 86_400_000_000_000L == 0)

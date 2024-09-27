@@ -1,8 +1,7 @@
-﻿using System.Text;
-using FantomTools.PodReading;
-using Myitian.Text;
+﻿using FantomTools.PodReading;
+using FantomTools.Utilities;
 
-namespace FantomTools.Utilities;
+namespace FantomTools.InternalUtilities;
 
 internal sealed class FantomStreamReader(PodReader podReader, Stream stream) : BigEndianReader(stream, false)
 {

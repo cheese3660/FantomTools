@@ -2,6 +2,7 @@
 using FantomTools.Fantom.Attributes;
 using FantomTools.Fantom.Code;
 using FantomTools.Fantom.Code.AssemblyTools;
+using FantomTools.InternalUtilities;
 using FantomTools.PodWriting;
 using FantomTools.Utilities;
 using JetBrains.Annotations;
@@ -269,7 +270,7 @@ public class Method
         return sb.ToString();
     }
 
-    internal void Emit(FantomStreamWriter writer, FantomTables tables)
+    internal void Emit(BigEndianWriter writer, FantomTables tables)
     {
         writer.WriteU16(tables.Names.Intern(Name));
         writer.WriteU32((uint)Flags);
@@ -296,10 +297,14 @@ public class Method
         }
     }
 
+    /// <summary>
+    /// Replace the method body with a method body assembled from the given assembly string
+    /// </summary>
+    /// <param name="assembly">The assembly string to assemble from</param>
     public void AssembleFrom(string assembly)
     {
         
-        var (insts, locals, tries) = new MethodAssembler(Body.Method).Assemble(assembly);
+        var (instructions, locals, tries) = new MethodAssembler(Body.Method).Assemble(assembly);
         _variables.RemoveAll(x => !x.IsParameter);
         Body.ErrorTable.TryBlocks = tries;
         foreach (var local in locals)
@@ -307,6 +312,6 @@ public class Method
             local.Index = (ushort)_variables.Count;
             _variables.Add(local);
         }
-        Body.Instructions = insts;
+        Body.Instructions = instructions;
     }
 }

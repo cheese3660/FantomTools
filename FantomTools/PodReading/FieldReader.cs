@@ -1,4 +1,5 @@
-﻿using FantomTools.Utilities;
+﻿using FantomTools.InternalUtilities;
+using FantomTools.Utilities;
 
 namespace FantomTools.PodReading;
 

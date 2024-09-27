@@ -1,10 +1,9 @@
-﻿using System.Text;
-using System.Web;
-using FantomTools.Fantom.Attributes;
+﻿using FantomTools.Fantom.Attributes;
 using FantomTools.Fantom.Code.DisassemblyTools;
 using FantomTools.Fantom.Code.ErrorHandling;
 using FantomTools.Fantom.Code.Instructions;
 using FantomTools.Fantom.Code.Operations;
+using FantomTools.InternalUtilities;
 using FantomTools.PodWriting;
 using FantomTools.Utilities;
 using JetBrains.Annotations;
@@ -16,7 +15,7 @@ namespace FantomTools.Fantom.Code;
 /// </summary>
 /// <param name="method">The method</param>
 [PublicAPI]
-public partial class MethodBody(Method method)
+public class MethodBody(Method method)
 {
     /// <summary>
     /// The method that this is a body of
@@ -28,6 +27,9 @@ public partial class MethodBody(Method method)
     /// </summary>
     public List<Instruction> Instructions = [];
 
+    /// <summary>
+    /// The error handling information of this method body
+    /// </summary>
     public ErrorTable ErrorTable = new();
     
     internal void Read(FantomStreamReader reader)
@@ -35,7 +37,7 @@ public partial class MethodBody(Method method)
         Dictionary<ushort, List<Action<Instruction>>> pendingLabels = [];
         Dictionary<ushort, Instruction> previousInstructions = [];
         ushort currentOffset = 0;
-        var op = 0;
+        int op;
         while ((op = reader.Stream.ReadByte()) > 0)
         {
             var offset = currentOffset;
@@ -48,6 +50,8 @@ public partial class MethodBody(Method method)
         {
             throw new Exception("Read instruction body without making every label");
         }
+
+        return;
 
         void PendLabel(ushort offset, Action<Instruction> onResolve)
         {
@@ -301,11 +305,11 @@ public partial class MethodBody(Method method)
     /// <returns>The textual disassembly</returns>
     public string Dump(bool addDecompilationGuesses=false) => DisassemblyBuilder.DisassembleAll(addDecompilationGuesses);
 
-    internal void Emit(FantomStreamWriter writer, FantomTables tables)
+    internal void Emit(BigEndianWriter writer, FantomTables tables)
     {
         ReconstructOffsets();
         using var bodyStream = new MemoryStream();
-        var bodyWriter = new FantomStreamWriter(bodyStream);
+        var bodyWriter = new BigEndianWriter(bodyStream);
         foreach (var instruction in Instructions)
         {
             bodyWriter.WriteU8((byte)instruction.OpCode);
@@ -364,6 +368,9 @@ public partial class MethodBody(Method method)
 
     
 
+    /// <summary>
+    /// Reconstruct the offset values in the instructions
+    /// </summary>
     public void ReconstructOffsets()
     {
         ushort offset = 0;

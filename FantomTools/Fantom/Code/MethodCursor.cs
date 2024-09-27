@@ -283,7 +283,13 @@ public class MethodCursor(MethodBody body)
     [PublicAPI]
     public enum InsertionRetargetMode
     {
+        /// <summary>
+        /// Keep the current target of the jump, i.e. place this code before the imaginary label
+        /// </summary>
         KeepCurrentTarget,
+        /// <summary>
+        /// Replace the target of the jump with the inserted instruction/block, i.e. place this code after the imaginary label
+        /// </summary>
         ReplaceWithInserted
     }
     

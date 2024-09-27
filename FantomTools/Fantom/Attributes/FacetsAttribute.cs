@@ -1,13 +1,20 @@
-﻿using FantomTools.PodWriting;
+﻿using FantomTools.InternalUtilities;
+using FantomTools.PodWriting;
 using FantomTools.Utilities;
 using JetBrains.Annotations;
 
 namespace FantomTools.Fantom.Attributes;
 
+/// <summary>
+/// This attribute contains a list of facets applied to the slot/type
+/// </summary>
 [PublicAPI]
 public class FacetsAttribute : FantomAttribute
 {
     
+    /// <summary>
+    /// The list of facets applied to the slot/type
+    /// </summary>
     public List<Facet> Facets = [];
     internal FacetsAttribute(string name, FantomStreamReader reader) : base(name)
     {
@@ -20,22 +27,23 @@ public class FacetsAttribute : FantomAttribute
         }
     }
 
+    /// <summary>
+    /// Create a new FacetsAttribute from a list of facets
+    /// </summary>
+    /// <param name="facets">The facets to add to the attribute</param>
     public FacetsAttribute(params Facet[] facets) : base("Facets")
     {
         Facets = facets.ToList();
     }
 
-    internal override void WriteBody(FantomStreamWriter writer, FantomTables tables)
+    internal override void WriteBody(BigEndianWriter writer, FantomTables tables)
     {
-        using var dataStream = new MemoryStream();
-        var dataWriter = new FantomStreamWriter(dataStream);
+        using var dataWriter = new FantomBufferStream(writer.Stream);
         dataWriter.WriteU16((ushort)Facets.Count);
         foreach (var facet in Facets)
         {
             dataWriter.WriteU16(tables.TypeReferences.Intern(facet.FacetType));
             dataWriter.WriteUtf8(facet.Value);
         }
-        writer.WriteU16((ushort)dataStream.Length);
-        writer.Stream.Write(dataStream.ToArray());
     }
 }

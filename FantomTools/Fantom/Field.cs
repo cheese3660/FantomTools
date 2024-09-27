@@ -58,7 +58,7 @@ public class Field(Type parentType, string name, TypeReference fieldType)
     /// </summary>
     public FieldReference Reference => new(ParentType, Name, FieldType);
 
-    internal void Emit(FantomStreamWriter writer, FantomTables tables)
+    internal void Emit(BigEndianWriter writer, FantomTables tables)
     {
         writer.WriteU16(tables.Names.Intern(Name));
         writer.WriteU32((uint)Flags);

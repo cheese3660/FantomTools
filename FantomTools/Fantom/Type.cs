@@ -264,7 +264,7 @@ public class Type(Pod pod, string name) : IEquatable<Type>
         return sb.ToString();
     }
 
-    internal void EmitMeta(FantomStreamWriter writer, FantomTables tables)
+    internal void EmitMeta(BigEndianWriter writer, FantomTables tables)
     {
         writer.WriteU16(tables.TypeReferences.Intern(Reference));
         writer.WriteU16(tables.TypeReferences.Intern(BaseType));
@@ -272,7 +272,7 @@ public class Type(Pod pod, string name) : IEquatable<Type>
         foreach (var mixin in Mixins) writer.WriteU16(tables.TypeReferences.Intern(mixin));
         writer.WriteU32((uint)Flags);
     }
-    internal void EmitBody(FantomStreamWriter writer, FantomTables tables)
+    internal void EmitBody(BigEndianWriter writer, FantomTables tables)
     {
         writer.WriteU16((ushort)Fields.Count);
         foreach (var field in Fields)

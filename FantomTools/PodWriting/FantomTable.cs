@@ -10,7 +10,7 @@ internal abstract class FantomTable<T> where T : IEquatable<T>
     public T this[ushort idx] => _data[idx];
     public bool Empty => _data.Count == 0;
     
-    public void WriteToStream(FantomStreamWriter writer)
+    public void WriteToStream(BigEndianWriter writer)
     {
         writer.WriteU16((ushort)_data.Count);
         foreach (var d in _data)
@@ -19,7 +19,7 @@ internal abstract class FantomTable<T> where T : IEquatable<T>
         }
     }
 
-    protected abstract void WriteSingle(FantomStreamWriter writer, T value);
+    protected abstract void WriteSingle(BigEndianWriter writer, T value);
 
     public ushort Intern(T value)
     {

@@ -39,10 +39,9 @@ internal class StatementDecompilationBuilder
     //          ... continue ...
 
     private NullSafetyState _nullSafety = NullSafetyState.NoSafety;
-    private Instruction? _lastNullSafetyJump = null;
-    private bool _lastCallWasVoid = false;
+    private bool _lastCallWasVoid;
     private int _nullPropagationCount = 0;
-    private Stack<Instruction> _elvisTargets = [];
+    private readonly Stack<Instruction> _elvisTargets = [];
 
     private enum NullSafetyState
     {
@@ -64,7 +63,7 @@ internal class StatementDecompilationBuilder
     }
 
     public string? Consume(Instruction instruction, string disassembly, int decompilationPadding, bool isVoidMethod,
-        Dictionary<Instruction, string> labels)
+        IReadOnlyDictionary<Instruction, string> labels)
     {
         // It will already have a newline!
         var methodInst = instruction as MethodInstruction;
@@ -109,7 +108,6 @@ internal class StatementDecompilationBuilder
                 goto case NullSafetyState.NoSafety;
             case NullSafetyState.JustCompared when instruction.OpCode == OperationType.JumpTrue:
                 _nullSafety = NullSafetyState.JustJumped;
-                _lastNullSafetyJump = jumpInst!.Target;
                 return null;
             case NullSafetyState.JustJumped when instruction.OpCode == OperationType.Jump:
                 _elvisTargets.Push(jumpInst!.Target);
