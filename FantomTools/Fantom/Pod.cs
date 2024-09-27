@@ -117,6 +117,17 @@ public sealed class Pod : IDisposable
         return readPod.ToMemoryPod();
     }
 
+    /// <summary>
+    /// Reads a Pod from an archive
+    /// </summary>
+    /// <param name="archive">The pod archive</param>
+    /// <returns>A memory representation of the pod read from the file</returns>
+    public static Pod FromArchive(ZipArchive archive)
+    {
+        using var readPod = new PodReader(archive);
+        return readPod.ToMemoryPod();
+    }
+
     internal void LoadMeta(Stream stream)
     {
         MetaData.Read(stream);

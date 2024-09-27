@@ -23,10 +23,13 @@ internal sealed class PodReader : IDisposable
     internal readonly List<long> Durations;
     private string _fCodeVersion = "";
     
-    public PodReader(FileInfo podFile)
+    public PodReader(FileInfo podFile) : this(ZipFile.OpenRead(podFile.FullName))
     {
-        Archive = new ZipPod(ZipFile.OpenRead(podFile.FullName), this);
+    }
 
+    public PodReader(ZipArchive podFile)
+    {
+        Archive = new ZipPod(podFile, this);
         ReadMeta(Archive.ReadFile("meta.props")!);
         Names = ReadTable("fcode/names.def", reader => reader.ReadUtf8());
         TypeRefs = ReadTable("fcode/typeRefs.def", TypeReferenceReader.Read);
