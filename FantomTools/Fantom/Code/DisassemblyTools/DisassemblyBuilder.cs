@@ -318,7 +318,7 @@ public class DisassemblyBuilder
         {
             result[Body.Instructions[0]] = "start";
         }
-        foreach (var instruction in Body.Instructions.Skip(1))
+        foreach (var instruction in Body.Instructions)
         {
             switch (instruction)
             {
