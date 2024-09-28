@@ -39,9 +39,56 @@ internal class MethodAssembler
     private Stack<(BlockType bt, TryBlock attachedBlock)> _currentBlocks = [];
 
     private List<MethodVariable> _newLocals = [];
+
+
+    public (List<Instruction> instructions, List<MethodVariable> newLocals, List<TryBlock> newTryBlocks, Dictionary<Instruction, string> labelsOverride) Assemble(
+        string body, Instruction? finish = null) // 
+    {
+        SetupAssembly(body, finish);
+        AssembleAll(finish);
+        var reversedLabels = new Dictionary<Instruction, string>();
+        foreach (var (k, v) in _labels)
+        {
+            reversedLabels[v] = k;
+        }
+        reversedLabels.TryAdd(_instructions[0], "start");
+        return (_instructions, _newLocals, _allTryBlocks.ToList(), reversedLabels);
+    }
+
     
-    
-    public (List<Instruction> instructions, List<MethodVariable> newLocals, List<TryBlock> newTryBlocks) Assemble(string body, Instruction? finish = null) // 
+    /// <summary>
+    /// Slightly janky at the moment
+    /// </summary>
+    /// <param name="body"></param>
+    /// <returns></returns>
+    public (List<Instruction> instructions, List<MethodVariable> newLocals, List<TryBlock> newTryBlocks,
+        Dictionary<Instruction, string> labelsOverride) AssembleMethod(string body)
+    {
+        // Now we need to trim off the first part of the body and copy local declarations into the second part
+        var lines = body.Split('\n', StringSplitOptions.TrimEntries).ToList();
+        // Remove the first 2 lines as they contain the method header, and maxstack declaration
+        // Remove the last line as it is the last brace of the method
+        lines = lines[1..^1];
+        var index = lines.FindIndex(x => x.StartsWith(".maxstack"));
+        if (index >= 0) lines.RemoveAt(index);
+        // Remove the closing bracket of the locals
+        var closingBracketIndex = lines.IndexOf("]");
+        lines.RemoveAt(closingBracketIndex);
+        // Remove the opening brace of the locals
+        var openingBraceIndex = lines.IndexOf("{");
+        lines.RemoveAt(openingBraceIndex);
+        SetupAssembly(string.Join('\n',lines),null);
+        AssembleAll();
+        var reversedLabels = new Dictionary<Instruction, string>();
+        foreach (var (k, v) in _labels)
+        {
+            reversedLabels[v] = k;
+        }
+        reversedLabels.TryAdd(_instructions[0], "start");
+        return (_instructions, _newLocals, _allTryBlocks.ToList(), reversedLabels);
+    }
+
+    private void SetupAssembly(string body, Instruction? finish)
     {
         _lines = Preprocess(body).ToList();
         _pendingJumps = [];
@@ -51,11 +98,17 @@ internal class MethodAssembler
         _currentBlocks = [];
         _newLocals = [];
         _onNextAppend = [];
+        
         if (finish != null) _labels["$FIN"] = finish;
+    }
+
+    private void AssembleAll(Instruction? finish = null)
+    {
         while (_index < _lines.Count)
         {
             ProcessNext();
         }
+
         if (_onNextAppend.Count != 0)
         {
             if (finish is not null)
@@ -67,9 +120,11 @@ internal class MethodAssembler
             }
             else
             {
-                throw new Exception("Information requiring next instruction found without being allowed next instruction, usually this is a terminating label!");
+                throw new Exception(
+                    "Information requiring next instruction found without being allowed next instruction, usually this is a terminating label!");
             }
         }
+
         if (_currentBlocks.Count > 0)
         {
             throw new Exception("Unfinished blocks found!");
@@ -79,7 +134,6 @@ internal class MethodAssembler
         {
             throw new Exception($"Unresolved labels: {string.Join(", ", _pendingJumps.Keys)}");
         }
-        return (_instructions, _newLocals, _allTryBlocks.ToList());
     }
 
     // This will be called until we have no more lines left
@@ -360,7 +414,7 @@ internal class MethodAssembler
         return new MethodReference(parentType, methodName.ToString(), returnType, parameters.ToArray()); 
     }
     
-    private MethodVariable ProcessLocalDeclaration(string? parameters)
+    private MethodVariable ProcessLocalDeclaration(string? parameters, bool allowMultiple = false)
     {
         if (parameters == null) throw new Exception($"Expected .local <name>, <type> for line: {Line}");
         var nameThenType = parameters.Split(',', 2, StringSplitOptions.TrimEntries);
@@ -371,9 +425,13 @@ internal class MethodAssembler
 
         var name = nameThenType[0];
         TypeReference type = nameThenType[1];
-        if (ResolveVariableName(name) != null)
+        if (ResolveVariableName(name) is {} current)
         {
-            throw new Exception($"Cannot have multiple locals with the same name, for example: {name}");
+            if (!allowMultiple)
+            {
+                throw new Exception($"Cannot have multiple locals with the same name, for example: {name}");
+            }
+            return current;
         }
 
         var local = new MethodVariable(false)

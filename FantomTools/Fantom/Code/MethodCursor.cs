@@ -225,7 +225,7 @@ public class MethodCursor(MethodBody body)
     /// <param name="retargetMode">How should jumps to the current instruction be treated</param>
     public void InsertAssembly(string assembly, InsertionRetargetMode retargetMode=InsertionRetargetMode.KeepCurrentTarget)
     {
-        var (insts, locals, tries) = new MethodAssembler(Body.Method, true).Assemble(assembly, Current);
+        var (insts, locals, tries,_) = new MethodAssembler(Body.Method, true).Assemble(assembly, Current);
         foreach (var local in locals)
         {
             local.Index = (ushort)body.Method.Variables.Count;

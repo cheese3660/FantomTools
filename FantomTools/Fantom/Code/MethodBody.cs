@@ -391,4 +391,12 @@ public class MethodBody(Method method)
     /// Get a disassembly builder for disassembling this method
     /// </summary>
     public DisassemblyBuilder DisassemblyBuilder => new(this);
+
+    /// <summary>
+    /// Get a disassembly builder for disassembling this method with a given label override
+    /// </summary>
+    /// <param name="labelOverride">The overriden labels</param>
+    /// <returns>The new disassembly builder</returns>
+    public DisassemblyBuilder DisassemblyBuilderWith(Dictionary<Instruction, string> labelOverride) =>
+        new(this, labelOverride);
 }

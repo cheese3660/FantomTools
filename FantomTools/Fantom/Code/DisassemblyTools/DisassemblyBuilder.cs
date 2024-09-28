@@ -46,15 +46,16 @@ public class DisassemblyBuilder
     /// This is a dictionary of instruction to a string denoting the starts of finally blocks
     /// </summary>
     public readonly IReadOnlyDictionary<Instruction, string> FinallyStarts;
-    
+
     /// <summary>
     /// Create a disassembly builder from a method body
     /// </summary>
     /// <param name="body">The method body</param>
-    public DisassemblyBuilder(MethodBody body)
+    /// <param name="labelOverride">A dictionary that overrides the set of labels in the method, mostly used from the assembly builder</param>
+    public DisassemblyBuilder(MethodBody body, Dictionary<Instruction,string>? labelOverride = null)
     {
         Body = body;
-        Labels = ConstructLabels();
+        Labels = labelOverride ?? ConstructLabels();
         (TryStarts, TryEnds, CatchStarts, FinallyStarts) = GetErrorHandlingInformation();
     }
 

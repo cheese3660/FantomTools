@@ -2,6 +2,7 @@
 using FantomTools.Fantom.Attributes;
 using FantomTools.Fantom.Code;
 using FantomTools.Fantom.Code.AssemblyTools;
+using FantomTools.Fantom.Code.Instructions;
 using FantomTools.InternalUtilities;
 using FantomTools.PodWriting;
 using FantomTools.Utilities;
@@ -301,10 +302,12 @@ public class Method
     /// Replace the method body with a method body assembled from the given assembly string
     /// </summary>
     /// <param name="assembly">The assembly string to assemble from</param>
-    public void AssembleFrom(string assembly)
+    /// <param name="isFullBody">Is this input a modified version of a dump (note at the moment this is slightly janky)</param>
+    /// <returns>A dictionary of instruction to string that can be used as a label override in the disassembly builder</returns>
+    public Dictionary<Instruction,string> AssembleFrom(string assembly, bool isFullBody=false)
     {
-        
-        var (instructions, locals, tries) = new MethodAssembler(Body.Method).Assemble(assembly);
+        var assembler = new MethodAssembler(Body.Method);
+        var (instructions, locals, tries,result) = isFullBody ? assembler.AssembleMethod(assembly) : assembler.Assemble(assembly);
         _variables.RemoveAll(x => !x.IsParameter);
         Body.ErrorTable.TryBlocks = tries;
         foreach (var local in locals)
@@ -313,5 +316,6 @@ public class Method
             _variables.Add(local);
         }
         Body.Instructions = instructions;
+        return result;
     }
 }
