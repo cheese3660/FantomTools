@@ -8,11 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="DecompilationPatterns\" />
-      <Folder Include="FantomSyntaxTree\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\FantomTools\FantomTools.csproj" />
     </ItemGroup>
 

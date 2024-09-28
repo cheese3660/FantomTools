@@ -120,6 +120,13 @@ public class DisassemblyBuilder
                 }
                 if (CatchStarts.TryGetValue(instruction, out var c))
                 {
+                    if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    if (TryEnds.TryGetValue(instruction, out var tryEnd))
+                    {
+                        tryIndentation -= 1;
+                        Indent(disassemblyBuilder);
+                        disassemblyBuilder.AppendLine($"}} /* {tryEnd} */");
+                    }
                     
                     if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
                     Indent(disassemblyBuilder);
@@ -148,6 +155,13 @@ public class DisassemblyBuilder
                 if (FinallyStarts.TryGetValue(instruction, out var f))
                 {
                     if (addDecompilationGuesses) disassemblyBuilder.Append(decompilationBuilder!.EndStatement());
+                    if (TryEnds.TryGetValue(instruction, out var tryEnd))
+                    {
+                        tryIndentation -= 1;
+                        Indent(disassemblyBuilder);
+                        disassemblyBuilder.AppendLine($"}} /* {tryEnd} */");
+                    }
+                    
                     if (Labels.TryGetValue(instruction, out var lab))
                     {
                         Indent(disassemblyBuilder, lab);
