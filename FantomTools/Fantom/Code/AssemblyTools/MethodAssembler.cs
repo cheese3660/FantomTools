@@ -68,7 +68,7 @@ internal class MethodAssembler
         var lines = body.Split('\n', StringSplitOptions.TrimEntries).ToList();
         // Remove the first 2 lines as they contain the method header, and maxstack declaration
         // Remove the last line as it is the last brace of the method
-        lines = lines[1..^1];
+        lines = lines[1..];
         var index = lines.FindIndex(x => x.StartsWith(".maxstack"));
         if (index >= 0) lines.RemoveAt(index);
         // Remove the closing bracket of the locals
@@ -77,6 +77,8 @@ internal class MethodAssembler
         // Remove the opening brace of the locals
         var openingBraceIndex = lines.IndexOf("{");
         lines.RemoveAt(openingBraceIndex);
+        var closingBraceIndex = lines.LastIndexOf("}");
+        lines.RemoveAt(closingBraceIndex);
         SetupAssembly(string.Join('\n',lines),null);
         AssembleAll();
         var reversedLabels = new Dictionary<Instruction, string>();
